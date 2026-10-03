@@ -19,7 +19,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", cfg.database.async_database_url)
+config.set_main_option("sqlalchemy.url", cfg.database.alembic_url)
 
 # src.core.db.models imports every model module on import, so importing
 # Base from there (rather than from src.core.db.models.base directly)
