@@ -1,22 +1,21 @@
-import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import uvicorn
 from dishka import make_async_container
 from dishka.integrations.fastapi import setup_dishka as setup_fastapi_dishka
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import Response
 from prometheus_client import CONTENT_TYPE_LATEST, REGISTRY, generate_latest
 
 from src.api import router
+from src.api.exc.handler import ApiErrorHandler
 from src.config import cfg
 from src.core.di import DbProvider
 from src.core.logging import setup_logging
-from src.core.metrics import PrometheusMiddleware, http_requests_total
+from src.core.metrics import PrometheusMiddleware
 from src.core.middleware import RequestLoggingMiddleware
-
-log = logging.getLogger(__name__)
 
 container = make_async_container(
     DbProvider(),
@@ -24,7 +23,7 @@ container = make_async_container(
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     setup_logging(cfg.logging.level)
     try:
         yield
@@ -52,12 +51,7 @@ app.add_middleware(RequestLoggingMiddleware)
 
 app.include_router(router)
 
-
-@app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    log.error("Unhandled exception", exc_info=exc)
-    http_requests_total.labels(method=request.method, path=request.url.path, status=500).inc()
-    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+ApiErrorHandler.register(app)
 
 
 @app.get("/")

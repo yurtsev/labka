@@ -22,8 +22,14 @@ active_requests = Gauge(
     ["method"],
 )
 
+app_errors_total = Counter(
+    "app_errors_total",
+    "Errors turned into HTTP responses, by layer and stable error code",
+    ["layer", "code", "status", "untranslated"],
+)
 
-def _route_path(scope: Scope) -> str:
+
+def route_path(scope: Scope) -> str:
     route = scope.get("route")
     if route and hasattr(route, "path"):
         return route.path
@@ -54,7 +60,7 @@ class PrometheusMiddleware:
             await self.app(scope, receive, send_wrapper)
             duration = time.perf_counter() - start
 
-            path = _route_path(scope)
+            path = route_path(scope)
 
             http_requests_total.labels(
                 method=method,
