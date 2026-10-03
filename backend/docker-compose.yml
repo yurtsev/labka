@@ -49,6 +49,8 @@ services:
       DATABASE__POSTGRES_DB: ${POSTGRES_DB}
       DATABASE__POSTGRES_HOST: postgres
       DATABASE__POSTGRES_PORT: 5432
+    volumes:
+      - ./config.toml:/app/config.toml:ro
     ports:
       - "127.0.0.1:8000:8000"
 
