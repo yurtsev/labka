@@ -1,0 +1,64 @@
+# Secrets
+.env
+.env.*
+!.env.example
+config.toml
+!config.toml.example
+*.pem
+*.key
+
+# OS
+.DS_Store
+._*
+Thumbs.db
+desktop.ini
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Node / frontend
+node_modules/
+.pnpm-store/
+.yarn/
+!.yarn/releases/
+.npm/
+.vite/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build
+build/
+dist/
+out/
+
+# Logs and temp
+*.log
+logs/
+tmp/
+temp/
+*.tmp
