@@ -3,7 +3,7 @@ name: labka
 services:
   postgres:
     image: postgres:18-alpine
-    container_name: postgres
+    container_name: labka_postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -22,7 +22,7 @@ services:
   migrate:
     build: .
     image: labka_backend:latest
-    container_name: migrate
+    container_name: labka_migrate
     restart: "no"
     entrypoint: ["python", "-m", "alembic", "upgrade", "head"]
     depends_on:
@@ -38,7 +38,7 @@ services:
   backend:
     build: .
     image: labka_backend:latest
-    container_name: backend
+    container_name: labka_backend
     restart: unless-stopped
     depends_on:
       migrate:
@@ -56,7 +56,7 @@ services:
 
   prometheus:
     image: prom/prometheus:latest
-    container_name: prometheus
+    container_name: labka_prometheus
     restart: unless-stopped
     volumes:
       - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -66,7 +66,7 @@ services:
 
   loki:
     image: grafana/loki:latest
-    container_name: loki
+    container_name: labka_loki
     restart: unless-stopped
     volumes:
       - loki_data:/loki
@@ -75,7 +75,7 @@ services:
 
   promtail:
     image: grafana/promtail:latest
-    container_name: promtail
+    container_name: labka_promtail
     restart: unless-stopped
     command: -config.file=/etc/promtail/promtail-config.yml
     volumes:
@@ -87,7 +87,7 @@ services:
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
-    container_name: cadvisor
+    container_name: labka_cadvisor
     restart: unless-stopped
     privileged: true
     volumes:
@@ -100,7 +100,7 @@ services:
 
   grafana:
     image: grafana/grafana:latest
-    container_name: grafana
+    container_name: labka_grafana
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
