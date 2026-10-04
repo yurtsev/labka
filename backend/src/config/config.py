@@ -40,6 +40,35 @@ class Database(BaseModel):
         return f"postgresql+asyncpg://{self.postgres_username}:{self.postgres_password}@{host}:{self.postgres_port}/{self.postgres_db}"
 
 
+class Auth(BaseModel):
+    jwt_secret: str = ""
+    access_token_ttl_minutes: int = 15
+    refresh_token_ttl_days: int = 30
+    admin_session_ttl_hours: int = 12
+    cookie_secure: bool = True
+    password_min_length: int = 8
+    password_max_length: int = 32
+
+
+class S3(BaseModel):
+    # Адрес, по которому S3 доступен бэкенду (в Docker — имя сервиса).
+    endpoint_url: str = ""
+    # Адрес для браузера: на него выписываются presigned-ссылки. Пусто — как endpoint_url.
+    public_endpoint_url: str = ""
+    region: str = "us-east-1"
+    access_key: str = ""
+    secret_key: str = ""
+    bucket: str = ""
+    max_file_size_bytes: int = 20 * 1024 * 1024
+    url_ttl_seconds: int = 900
+    timeout_seconds: float = 10
+
+
+class Pagination(BaseModel):
+    default_per_page: int = 20
+    max_per_page: int = 100
+
+
 class Logging(BaseModel):
     level: str = "INFO"
 
@@ -54,6 +83,23 @@ class Config(BaseSettings):
     database: Database = Database()
     logging: Logging = Logging()
     cors: CORS = CORS()
+    auth: Auth = Auth()
+    pagination: Pagination = Pagination()
+    s3: S3 = S3()
+
+    def missing_required(self) -> list[str]:
+        """Настройки, без которых приложение не запускается, но которые не заданы."""
+        required = {
+            "database.postgres_host": self.database.postgres_host,
+            "database.postgres_db": self.database.postgres_db,
+            "database.postgres_username": self.database.postgres_username,
+            "auth.jwt_secret": self.auth.jwt_secret,
+            "s3.endpoint_url": self.s3.endpoint_url,
+            "s3.bucket": self.s3.bucket,
+            "s3.access_key": self.s3.access_key,
+            "s3.secret_key": self.s3.secret_key,
+        }
+        return [name for name, value in required.items() if not value]
 
     @classmethod
     def settings_customise_sources(

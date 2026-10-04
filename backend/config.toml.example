@@ -5,8 +5,32 @@ postgres_db = "app"
 postgres_host = "localhost"
 postgres_port = 5432
 
+[s3]
+endpoint_url = "http://localhost:9000"
+public_endpoint_url = "http://localhost:9000"
+region = "us-east-1"
+access_key = "change-me"
+secret_key = "change-me"
+bucket = "labka"
+max_file_size_bytes = 20971520
+url_ttl_seconds = 900
+timeout_seconds = 10
+
+[pagination]
+default_per_page = 20
+max_per_page = 100
+
 [logging]
 level = "INFO"
 
 [cors]
 origins = ["http://localhost:3000"]
+
+[auth]
+jwt_secret = "change-me"
+access_token_ttl_minutes = 15
+refresh_token_ttl_days = 30
+admin_session_ttl_hours = 12
+cookie_secure = false
+password_min_length = 8
+password_max_length = 32
