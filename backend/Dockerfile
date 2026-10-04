@@ -1,6 +1,6 @@
-FROM python:3.14-slim AS builder
+FROM python:3.14.7-slim AS builder
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.12.23 /uv /uvx /bin/
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ COPY src ./src
 RUN uv sync --frozen --no-dev
 
 
-FROM python:3.14-slim
+FROM python:3.14.7-slim
 
 RUN useradd --create-home --shell /bin/bash app
 WORKDIR /app

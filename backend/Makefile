@@ -2,9 +2,11 @@
         up down build logs ps \
         upgrade downgrade migrate \
         format lint lint-fix typecheck check \
-        run
+        test test-integration test-all \
+        run create-admin create-admin-docker
 
-SRC := src
+SRC := src tests
+TESTS := tests
 
 help:
 	@echo ""
@@ -27,8 +29,15 @@ help:
 	@echo "    lint-fix                  форматирование + автоисправление линтера"
 	@echo "    typecheck                 проверка типов mypy"
 	@echo ""
+	@echo "  Тесты"
+	@echo "    test                      unit-тесты (без Docker)"
+	@echo "    test-integration          integration-тесты (PostgreSQL в Testcontainers, нужен Docker)"
+	@echo "    test-all                  все тесты"
+	@echo ""
 	@echo "  Разработка"
 	@echo "    run                       запустить приложение локально (без docker)"
+	@echo "    create-admin              создать админа (спросит почту, ФИО и пароль)"
+	@echo "    create-admin-docker       то же в запущенном make up контейнере backend"
 	@echo ""
 
 # === Docker ===
@@ -63,6 +72,23 @@ migrate:
 
 run:
 	uv run python -m src
+
+create-admin:
+	uv run python -m src.admin.cli
+
+create-admin-docker:
+	docker compose exec backend python -m src.admin.cli
+
+# === Tests ===
+
+test:
+	uv run pytest $(TESTS) --suite=unit
+
+test-integration:
+	uv run pytest $(TESTS) --suite=integration
+
+test-all:
+	uv run pytest $(TESTS) --suite=full
 
 # === Quality ===
 
