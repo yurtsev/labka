@@ -1,0 +1,3 @@
+{% extends "sqladmin_original/login.html" %}
+{# sqladmin пишет «Invalid credentials.» в коде, мимо переводов. #}
+{% set error = "Неверная почта или пароль" if error == "Invalid credentials." else error %}
