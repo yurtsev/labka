@@ -14,6 +14,7 @@ from src.core.errors.base import (
     PersistenceError,
     PersistenceUnavailableError,
     RuleViolationError,
+    UnauthenticatedError,
 )
 from src.core.errors.enums import ErrorLayer
 from src.core.errors.report import ErrorLink, ErrorReport
@@ -37,4 +38,5 @@ __all__ = [
     "PersistenceError",
     "PersistenceUnavailableError",
     "RuleViolationError",
+    "UnauthenticatedError",
 ]

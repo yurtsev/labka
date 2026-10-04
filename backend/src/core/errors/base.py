@@ -44,6 +44,14 @@ class ForbiddenError(DomainError):
     pass
 
 
+class UnauthenticatedError(AppError):
+    """Запрос без действительной аутентификации.
+
+    Отдельная категория, а не `DomainError`: её бросают и core-подсистема
+    проверки сессии, и API-домены. Отдаётся клиенту как есть, без перевода.
+    """
+
+
 class CoreError(AppError):
     """Смысловая ошибка core-подсистемы.
 

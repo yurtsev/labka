@@ -25,6 +25,7 @@ from src.core.errors import (
     NotFoundError,
     PersistenceUnavailableError,
     RuleViolationError,
+    UnauthenticatedError,
 )
 from src.core.metrics import app_errors_total, http_requests_total, route_path
 
@@ -54,7 +55,7 @@ class ApiErrorHandler:
         status = ApiErrorHandler._status_for(exc)
         ApiErrorHandler._record(request, report, status, ApiErrorHandler._level_for(exc), exc)
 
-        if isinstance(exc, DomainError):
+        if isinstance(exc, DomainError | UnauthenticatedError):
             return ApiErrorHandler._respond(status, exc.code, exc.message, exc.context)
         if isinstance(exc, IntegrationError | PersistenceUnavailableError):
             return ApiErrorHandler._respond(status, exc.code, exc.message)
@@ -112,6 +113,8 @@ class ApiErrorHandler:
     @staticmethod
     def _status_for(exc: AppError) -> HTTPStatus:
         match exc:
+            case UnauthenticatedError():
+                return HTTPStatus.UNAUTHORIZED
             case NotFoundError():
                 return HTTPStatus.NOT_FOUND
             case ConflictError():
@@ -134,7 +137,7 @@ class ApiErrorHandler:
     @staticmethod
     def _level_for(exc: AppError) -> int:
         match exc:
-            case DomainError():
+            case DomainError() | UnauthenticatedError():
                 return logging.INFO
             case IntegrationError() | PersistenceUnavailableError():
                 return logging.WARNING
