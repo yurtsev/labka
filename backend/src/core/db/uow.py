@@ -1,6 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.db.repositories.course import CourseRepository
+from src.core.db.repositories.course_material import CourseMaterialRepository
+from src.core.db.repositories.course_material_file import CourseMaterialFileRepository
 from src.core.db.repositories.department import DepartmentRepository
 from src.core.db.repositories.direction import DirectionRepository
 from src.core.db.repositories.faculty import FacultyRepository
@@ -21,6 +23,8 @@ class UnitOfWork:
         self.departments = DepartmentRepository(self.session)
         self.faculties = FacultyRepository(self.session)
         self.courses = CourseRepository(self.session)
+        self.course_materials = CourseMaterialRepository(self.session)
+        self.course_material_files = CourseMaterialFileRepository(self.session)
 
     async def flush(self) -> None:
         await self.session.flush()

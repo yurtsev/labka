@@ -4,6 +4,8 @@ from src.core.db.models.assignment_file import AssignmentFile
 from src.core.db.models.base import Base
 from src.core.db.models.course import Course
 from src.core.db.models.course_group import CourseGroup
+from src.core.db.models.course_material import CourseMaterial
+from src.core.db.models.course_material_file import CourseMaterialFile
 from src.core.db.models.department import Department
 from src.core.db.models.direction import Direction
 from src.core.db.models.faculty import Faculty
@@ -30,6 +32,8 @@ __all__ = [
     "Base",
     "Course",
     "CourseGroup",
+    "CourseMaterial",
+    "CourseMaterialFile",
     "Department",
     "Direction",
     "Faculty",
