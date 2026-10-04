@@ -5,28 +5,39 @@ description = "Labka backend service"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "aioboto3>=13",
     "alembic>=1.18.5",
+    "argon2-cffi>=25.1.0",
     "asyncpg>=0.31.0",
     "dishka>=1.10.1",
+    "email-validator>=2.3.0",
     "fastapi>=0.139.0",
     "prometheus-client>=0.25.0",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.2",
+    "pyjwt>=2.15.1",
+    "sqladmin[i18n]>=0.32.0",
     "sqlalchemy[asyncio]>=2.0.51",
+    "types-aiobotocore-s3~=2.25.1",
     "uvicorn>=0.51.0",
 ]
 
 [dependency-groups]
 dev = [
+    "boto3>=1.40.61",
+    "httpx>=0.28.1",
     "mypy>=2.2.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
     "ruff>=0.15.21",
+    "testcontainers[postgres]>=4.15.0",
 ]
 
 [tool.ruff]
 line-length = 100
 target-version = "py314"
 src = ["."]
-include = ["src/**/*.py"]
+include = ["src/**/*.py", "tests/**/*.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "B", "C4", "UP", "SIM"]
@@ -34,9 +45,18 @@ select = ["E", "F", "I", "W", "B", "C4", "UP", "SIM"]
 [tool.ruff.format]
 quote-style = "double"
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+addopts = "-q --import-mode=importlib"
+markers = ["case(id): сценарий из tests/scenarios.toml, который закрывает тест"]
+
 [tool.mypy]
 python_version = "3.14"
-files = ["src"]
+files = ["src", "tests"]
 ignore_missing_imports = true
 check_untyped_defs = true
 warn_unused_ignores = true
