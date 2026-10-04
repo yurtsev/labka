@@ -1,0 +1,524 @@
+# Каждый тест помечен @pytest.mark.case(id=...) и закрывает ровно один сценарий.
+# Тест обязан лежать в tests/<layer>/<domain>/. status = "known_bug" превращает
+# тест в xfail(strict=True) — с обязательным reason.
+schema_version = 1
+
+# --- unit / config ---
+
+[[scenario]]
+id = "CONFIG-001"
+title = "Приложение не стартует без обязательных настроек и называет каждую незаполненную"
+layer = "unit"
+domain = "config"
+
+# --- unit / architecture ---
+
+[[scenario]]
+id = "ARCH-IMPORTS-001"
+title = "src/core не импортирует src/api (кроме DI-провайдеров в src/core/di)"
+layer = "unit"
+domain = "architecture"
+
+[[scenario]]
+id = "ARCH-IMPORTS-002"
+title = "API-домены не импортируют друг друга"
+layer = "unit"
+domain = "architecture"
+
+[[scenario]]
+id = "ARCH-IMPORTS-003"
+title = "Роутеры не обращаются к DB-слою и SQLAlchemy напрямую"
+layer = "unit"
+domain = "architecture"
+
+[[scenario]]
+id = "ARCH-IMPORTS-004"
+title = "В src только абсолютные импорты"
+layer = "unit"
+domain = "architecture"
+
+[[scenario]]
+id = "ARCH-IMPORTS-005"
+title = "src/admin и src/api не импортируют друг друга, src/core не импортирует src/admin (кроме src/core/di)"
+layer = "unit"
+domain = "architecture"
+
+[[scenario]]
+id = "ARCH-DI-001"
+title = "DI-контейнер собирается, и каждая FromDishka-зависимость роутов зарегистрирована"
+layer = "unit"
+domain = "architecture"
+
+# --- unit / admin ---
+
+[[scenario]]
+id = "ADMIN-CLI-001"
+title = "create-admin: почта нормализуется, некорректная почта, пароль вне 8–32 символов и несовпадение паролей — отказ"
+layer = "unit"
+domain = "admin"
+
+# --- unit / security ---
+
+[[scenario]]
+id = "AUTH-TOKEN-001"
+title = "Access-токен переносит user_id и session_id"
+layer = "unit"
+domain = "security"
+
+[[scenario]]
+id = "AUTH-TOKEN-002"
+title = "Истёкший или некорректный access-токен отклоняется"
+layer = "unit"
+domain = "security"
+
+[[scenario]]
+id = "AUTH-TOKEN-003"
+title = "Access-токен с чужой подписью отклоняется"
+layer = "unit"
+domain = "security"
+
+[[scenario]]
+id = "AUTH-TOKEN-004"
+title = "Refresh-токен разбирается обратно, проверка хэша секрета"
+layer = "unit"
+domain = "security"
+
+[[scenario]]
+id = "AUTH-TOKEN-005"
+title = "Некорректный refresh-токен отклоняется без обращения к БД"
+layer = "unit"
+domain = "security"
+
+[[scenario]]
+id = "AUTH-PASSWORD-001"
+title = "Пароль хранится солёным argon2-хэшем и проверяется"
+layer = "unit"
+domain = "security"
+
+# --- integration / auth: UC-C0 регистрация ---
+
+[[scenario]]
+id = "UC-C0-001"
+title = "Регистрация создаёт студента в группе, привязывает почту и сразу входит"
+layer = "integration"
+domain = "auth"
+
+[[scenario]]
+id = "UC-C0-002"
+title = "Неверный код группы"
+layer = "integration"
+domain = "auth"
+
+[[scenario]]
+id = "UC-C0-003"
+title = "По коду неактивной группы зарегистрироваться нельзя"
+layer = "integration"
+domain = "auth"
+
+[[scenario]]
+id = "UC-C0-004"
+title = "Почты нет в списке этой группы (в том числе есть в списке другой)"
+layer = "integration"
+domain = "auth"
+
+[[scenario]]
+id = "UC-C0-005"
+title = "Почта уже зарегистрирована"
+layer = "integration"
+domain = "auth"
+
+[[scenario]]
+id = "UC-C0-006"
+title = "Регистр email и пробелы в коде и ФИО нормализуются"
+layer = "integration"
+domain = "auth"
+
+[[scenario]]
+id = "UC-C0-007"
+title = "Пароль короче 8 или длиннее 32 символов отклоняется"
+layer = "integration"
+domain = "auth"
+
+# --- integration / auth: UC-C1 вход ---
+
+[[scenario]]
+id = "UC-C1-001"
+title = "Вход открывает новую сессию и ставит cookie"
+layer = "integration"
+domain = "auth"
+
+[[scenario]]
+id = "UC-C1-002"
+title = "Неверный пароль и неизвестный email неотличимы"
+layer = "integration"
+domain = "auth"
+
+[[scenario]]
+id = "UC-C1-003"
+title = "«Аккаунт деактивирован» — только при верном пароле"
+layer = "integration"
+domain = "auth"
+
+[[scenario]]
+id = "UC-C1-004"
+title = "Админ не входит в веб-приложение"
+layer = "integration"
+domain = "auth"
+
+# --- integration / auth: UC-C2 продление сессии ---
+
+[[scenario]]
+id = "UC-C2-001"
+title = "Refresh ротирует оба токена в рамках той же сессии"
+layer = "integration"
+domain = "auth"
+
+[[scenario]]
+id = "UC-C2-002"
+title = "Повторное использование заменённого refresh-токена отзывает сессию"
+layer = "integration"
+domain = "auth"
+
+[[scenario]]
+id = "UC-C2-003"
+title = "Refresh без токена или с битым токеном — 401"
+layer = "integration"
+domain = "auth"
+
+# --- integration / auth: UC-C3 выход ---
+
+[[scenario]]
+id = "UC-C3-001"
+title = "Logout отзывает access- и refresh-токены сессии"
+layer = "integration"
+domain = "auth"
+
+[[scenario]]
+id = "UC-C3-002"
+title = "Logout без сессии идемпотентен"
+layer = "integration"
+domain = "auth"
+
+# --- integration / auth: UC-C4 смена пароля ---
+
+[[scenario]]
+id = "UC-C4-001"
+title = "Смена пароля сохраняет текущую сессию и отзывает остальные"
+layer = "integration"
+domain = "auth"
+
+[[scenario]]
+id = "UC-C4-002"
+title = "Неверный текущий пароль"
+layer = "integration"
+domain = "auth"
+
+[[scenario]]
+id = "UC-C4-003"
+title = "Смена пароля требует входа"
+layer = "integration"
+domain = "auth"
+
+[[scenario]]
+id = "UC-C4-004"
+title = "Вход и смена пароля отклоняют пароль длиннее 32 символов"
+layer = "integration"
+domain = "auth"
+
+# --- integration / auth: сессии ---
+
+[[scenario]]
+id = "AUTH-SESSION-001"
+title = "/me без cookie — 401"
+layer = "integration"
+domain = "auth"
+
+[[scenario]]
+id = "AUTH-SESSION-002"
+title = "Деактивированный пользователь теряет доступ при живой сессии"
+layer = "integration"
+domain = "auth"
+
+# --- integration / admin: вход ---
+
+[[scenario]]
+id = "ADMIN-AUTH-001"
+title = "Без входа админка редиректит на русскую форму входа, после входа админа — открывается"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-AUTH-002"
+title = "Студент и преподаватель не входят в админку даже с верным паролем; ошибка входа — по-русски"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-AUTH-003"
+title = "Выход из админки отзывает сессию: старая cookie больше не пускает"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-AUTH-004"
+title = "Деактивированный админ теряет доступ при живой сессии"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-AUTH-005"
+title = "Пароль длиннее 32 символов не пускает в админку, даже если он верный"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-ACCOUNT-001"
+title = "Создание админа (make create-admin): он входит в админку; повтор почты — ошибка"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-VIEWS-001"
+title = "Все разделы админки открывают список, карточку, форму и экспорт; хэши наружу не попадают"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-STRUCTURE-001"
+title = "Элемент структуры вуза, на который ссылаются, не удаляется — понятная ошибка; свободный удаляется"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-STRUCTURE-002"
+title = "Повтор названия подразделения, кафедры в подразделении или сокращения направления — понятная ошибка при создании и правке"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-STRUCTURE-003"
+title = "Ожидаемая ошибка формы админки пишется в лог как info без стектрейса и считается в app_errors_total"
+layer = "integration"
+domain = "admin"
+
+# --- integration / admin: группы ---
+
+[[scenario]]
+id = "ADMIN-GROUP-001"
+title = "Группа без названия получает автоназвание, код показывается один раз и по нему регистрируются"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-GROUP-002"
+title = "Название группы, заданное вручную, сохраняется как есть"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-GROUP-003"
+title = "Повтор названия группы — ошибка в форме, вторая группа не создаётся"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-GROUP-004"
+title = "Перевыпуск кода: старый код перестаёт работать, новый работает"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-GROUP-005"
+title = "Правка группы: нетронутое автоназвание пересобирается по новым полям, ручное остаётся"
+layer = "integration"
+domain = "admin"
+
+# --- integration / admin: почты групп ---
+
+[[scenario]]
+id = "ADMIN-INVITE-001"
+title = "Почта приводится к нижнему регистру, по ней регистрируются, в списке видно «зарегистрирован»"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-INVITE-002"
+title = "Повтор почты в списках групп — ошибка в форме"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-INVITE-003"
+title = "Перенос почты в другую группу: регистрация идёт уже в новую группу"
+layer = "integration"
+domain = "admin"
+
+# --- integration / admin: преподаватели ---
+
+[[scenario]]
+id = "ADMIN-TEACHER-001"
+title = "Преподаватель создаётся с паролем, показанным один раз (кнопка «Скопировать»); входит с ним, группы прикреплены"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-TEACHER-002"
+title = "Изменение набора прикреплённых групп преподавателя"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-TEACHER-003"
+title = "Повтор почты преподавателя — ошибка в форме"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-TEACHER-004"
+title = "Раздел преподавателей не показывает и не редактирует других пользователей"
+layer = "integration"
+domain = "admin"
+
+[[scenario]]
+id = "ADMIN-TEACHER-005"
+title = "Неактивную группу нельзя прикрепить к преподавателю; уже прикреплённая и потом деактивированная сохранению не мешает"
+layer = "integration"
+domain = "admin"
+
+# --- integration / courses ---
+
+[[scenario]]
+id = "UC-T2-001"
+title = "Преподаватель создаёт курс со своими группами: в ответе шкала, пояснение, группы и преподаватель"
+layer = "integration"
+domain = "courses"
+
+[[scenario]]
+id = "UC-T2-002"
+title = "Курс с неприкреплённой или неактивной группой не создаётся"
+layer = "integration"
+domain = "courses"
+
+[[scenario]]
+id = "UC-T2-003"
+title = "Студент не может создать курс и получить группы для выбора"
+layer = "integration"
+domain = "courses"
+
+[[scenario]]
+id = "UC-T2-004"
+title = "Некорректная шкала (min >= max, лишние поля у binary) или курс без групп — 422"
+layer = "integration"
+domain = "courses"
+
+[[scenario]]
+id = "UC-T2-005"
+title = "Список курсов — плитки постранично: новые первыми, в ответе страница, размер, всего записей и страниц"
+layer = "integration"
+domain = "courses"
+
+[[scenario]]
+id = "UC-T3-001"
+title = "Преподаватель меняет курс; чужой курс — 403, несуществующий — 404"
+layer = "integration"
+domain = "courses"
+
+[[scenario]]
+id = "UC-T4-001"
+title = "Добавленная группа сразу видит курс, убранная — перестаёт"
+layer = "integration"
+domain = "courses"
+
+[[scenario]]
+id = "UC-T4-002"
+title = "Нельзя добавить неприкреплённую группу или группу дважды и убрать группу, которой нет в курсе"
+layer = "integration"
+domain = "courses"
+
+[[scenario]]
+id = "UC-T4-003"
+title = "Группы для выбора: только активные прикреплённые к преподавателю, по алфавиту, поиск по названию и фильтрам, пагинация"
+layer = "integration"
+domain = "courses"
+
+[[scenario]]
+id = "UC-T4-004"
+title = "Группу добавили параллельным запросом между проверкой и сохранением — 409, а не 500"
+layer = "integration"
+domain = "courses"
+
+[[scenario]]
+id = "UC-T15-001"
+title = "Архив: курс уходит из основного списка, читается, но не меняется; возврат из архива"
+layer = "integration"
+domain = "courses"
+
+[[scenario]]
+id = "UC-S2-001"
+title = "Студент видит и открывает курсы своей группы; курс другой группы — 403"
+layer = "integration"
+domain = "courses"
+
+# --- integration / materials ---
+
+[[scenario]]
+id = "UC-T5-001"
+title = "Преподаватель создаёт материал: название, текст со ссылкой и файлы, загруженные напрямую в S3; файлы скачиваются под исходными именами"
+layer = "integration"
+domain = "materials"
+
+[[scenario]]
+id = "UC-T5-002"
+title = "Материал отклоняется: без названия, файл больше лимита, чужой ключ, файл не загружен, повтор файла, студент, архивный курс"
+layer = "integration"
+domain = "materials"
+
+[[scenario]]
+id = "UC-T5-003"
+title = "Удаление материала убирает его и все его файлы из S3; материал другого курса — 404"
+layer = "integration"
+domain = "materials"
+
+[[scenario]]
+id = "UC-T5-004"
+title = "Студент курса видит и скачивает материалы постранично; студент другой группы — 403"
+layer = "integration"
+domain = "materials"
+
+[[scenario]]
+id = "UC-T5-005"
+title = "S3 недоступен при удалении материала или его файла — 503, всё остаётся"
+layer = "integration"
+domain = "materials"
+
+[[scenario]]
+id = "UC-T5-006"
+title = "Правка материала: название и текст меняются, файл прикрепляется и убирается из S3, любая правка двигает updated_at; файл другого материала — 404"
+layer = "integration"
+domain = "materials"
+
+# --- integration / profile ---
+
+[[scenario]]
+id = "UC-C5-001"
+title = "Аватарка загружается в S3 и ставится; замена удаляет прежний файл, удаление — текущий"
+layer = "integration"
+domain = "profile"
+
+[[scenario]]
+id = "UC-C5-002"
+title = "Аватарка отклоняется: не PNG/JPEG/WebP/GIF (в том числе SVG), больше лимита, чужой ключ, файл не загружен"
+layer = "integration"
+domain = "profile"
+
+[[scenario]]
+id = "UC-C5-003"
+title = "S3 недоступен при замене или удалении аватарки — 503, прежняя аватарка остаётся"
+layer = "integration"
+domain = "profile"
+
+[[scenario]]
+id = "PROFILE-001"
+title = "Профиль: ФИО и почта, группа у студента, кафедра у преподавателя"
+layer = "integration"
+domain = "profile"
