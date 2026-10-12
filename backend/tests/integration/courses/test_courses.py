@@ -113,3 +113,39 @@ async def test_teacher_updates_own_course_only(client: AsyncClient, db: AsyncSes
     missing = await get_course(client, "01900000-0000-7000-8000-000000000000")
     assert missing.status_code == 404
     assert error_code(missing) == "courses.not_found"
+
+
+@pytest.mark.case(id="UC-T2-006")
+async def test_course_has_semester(client: AsyncClient, db: AsyncSession) -> None:
+    group = await create_group(db, name="БВТ2601", code="CODE-1")
+    await create_teacher(db, "teacher@example.com", "password-1", [group])
+    await sign_in(client, "teacher@example.com", "password-1")
+
+    autumn = await create_course(client, [group.id], term="autumn", year=2026)
+    spring = await create_course(client, [group.id], term="spring", year=2027)
+    current = await create_course(client, [group.id])
+    only_term = await client.post("/api/courses", json=course_body([group.id], term="autumn"))
+    bad_year = await client.post(
+        "/api/courses", json=course_body([group.id], term="autumn", year=1999)
+    )
+    changed = await client.put(
+        f"/api/courses/{autumn['id']}",
+        json={**course_body([group.id], term="spring", year=2030), "name": "Новое"},
+    )
+
+    assert autumn["semester"] == {
+        "term": "autumn",
+        "year": 2026,
+        "starts_on": "2026-09-01",
+        "classes_end_on": "2026-12-30",
+        "ends_on": "2027-01-31",
+    }
+    assert spring["semester"]["starts_on"] == "2027-02-01"
+    assert spring["semester"]["ends_on"] == "2027-07-10"
+    assert current["semester"]["term"] in ("autumn", "spring")
+    assert (only_term.status_code, error_code(only_term)) == (422, "request.invalid")
+    assert (bad_year.status_code, error_code(bad_year)) == (422, "request.invalid")
+    # Семестр задаётся при создании и дальше не меняется.
+    assert changed.json()["semester"] == autumn["semester"]
+    listed = (await client.get("/api/courses")).json()["items"]
+    assert {item["semester"]["term"] for item in listed} >= {"autumn", "spring"}

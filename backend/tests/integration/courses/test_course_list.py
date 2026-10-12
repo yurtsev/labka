@@ -30,6 +30,7 @@ async def test_course_list_is_paginated(client: AsyncClient, db: AsyncSession) -
         "id",
         "name",
         "teacher",
+        "semester",
         "is_archived",
         "groups",
         "pending_reviews",
