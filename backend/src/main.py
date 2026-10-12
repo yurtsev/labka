@@ -19,13 +19,18 @@ from src.config.exc import ConfigIncompleteError
 from src.core.di import (
     AccessProvider,
     AdminProvider,
+    AnnouncementsProvider,
+    AssignmentsProvider,
     AuthProvider,
     CoursesProvider,
     DbProvider,
+    FeedProvider,
     MaterialsProvider,
     ProfileProvider,
+    ReviewsProvider,
     S3Provider,
     SecurityProvider,
+    SubmissionsProvider,
 )
 from src.core.logging import setup_logging
 from src.core.metrics import PrometheusMiddleware
@@ -44,6 +49,11 @@ container = make_async_container(
     S3Provider(),
     MaterialsProvider(),
     ProfileProvider(),
+    AnnouncementsProvider(),
+    AssignmentsProvider(),
+    FeedProvider(),
+    ReviewsProvider(),
+    SubmissionsProvider(),
 )
 
 
