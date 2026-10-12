@@ -28,11 +28,13 @@ class Notification(Base):
             unique=True,
             postgresql_where=text("NOT is_read AND dedup_key IS NOT NULL"),
         ),
-        # Напоминание о дедлайне — не больше одного на пару «студент + задание».
+        # Напоминание о дедлайне — не больше одного на «студент + задание + срок»: после переноса
+        # срока напоминание приходит снова.
         Index(
             "uq_notifications_deadline_reminder",
             "user_id",
             text("(data ->> 'assignment_id')"),
+            text("(data ->> 'deadline_at')"),
             unique=True,
             postgresql_where=text("type = 'deadline_reminder'"),
         ),

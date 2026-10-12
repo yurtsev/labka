@@ -6,7 +6,13 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.db.models import Course, Notification, User
-from tests.support.assignments import create_assignment, review, submissions_url, submit
+from tests.support.assignments import (
+    assignment_body,
+    create_assignment,
+    review,
+    submissions_url,
+    submit,
+)
 from tests.support.auth import create_group, error_code
 from tests.support.courses import create_course, create_student, create_teacher, sign_in
 from tests.support.schedule import add_rule, assign_exam, autumn_course, rule_body
@@ -311,6 +317,20 @@ async def test_deadline_reminders(client: AsyncClient, db: AsyncSession) -> None
     assert waiting[0]["text"].endswith("(МСК)")
     assert waiting[0]["target"]["assignment_id"] == due["id"]
     assert submitted == [] and teacher == []
+
+    # Срок перенесли — студент снова получает напоминание за сутки до нового срока.
+    later = (datetime.now(UTC) + timedelta(hours=9)).isoformat()
+    moved = await client.put(
+        f"/api/courses/{course['id']}/assignments/{due['id']}",
+        json=assignment_body(title="Скоро", deadline_type="hard", deadline_at=later),
+    )
+    third_run = await scheduler.remind_deadlines()
+    fourth_run = await scheduler.remind_deadlines()
+    again = await reminders("late@example.com")
+
+    assert moved.status_code == 200, moved.text
+    assert (third_run, fourth_run) == (1, 0)
+    assert len(again) == 2
 
     await db.execute(update(Course).values(is_archived=True))
     await db.commit()

@@ -2,7 +2,7 @@ from collections.abc import Collection
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import String, exists, func, select, union_all, update
+from sqlalchemy import DateTime, String, exists, func, select, union_all, update
 from sqlalchemy.orm import selectinload
 
 from src.core.db.dto.notification import ReminderTarget
@@ -94,6 +94,8 @@ class AssignmentRepository(BaseRepository[Assignment]):
                     Notification.user_id == User.id,
                     Notification.type == NotificationType.DEADLINE_REMINDER,
                     Notification.data["assignment_id"].astext == func.cast(Assignment.id, String),
+                    Notification.data["deadline_at"].astext.cast(DateTime(timezone=True))
+                    == Assignment.deadline_at,
                 ),
             )
             .order_by(Assignment.deadline_at, Assignment.id, User.id)
@@ -110,6 +112,25 @@ class AssignmentRepository(BaseRepository[Assignment]):
             )
             for row in rows.all()
         ]
+
+    async def count_unsubmitted_by_course(
+        self, student_id: UUID, course_ids: Collection[UUID]
+    ) -> dict[UUID, int]:
+        """Сколько заданий в каждом курсе студент ещё не сдавал; без попыток — 0."""
+        if not course_ids:
+            return {}
+        query = (
+            select(Assignment.course_id, func.count(Assignment.id))
+            .where(
+                Assignment.course_id.in_(course_ids),
+                ~exists().where(
+                    Submission.assignment_id == Assignment.id, Submission.student_id == student_id
+                ),
+            )
+            .group_by(Assignment.course_id)
+        )
+        found = dict((await self._session.execute(query)).tuples().all())
+        return {course_id: found.get(course_id, 0) for course_id in course_ids}
 
     async def count_submissions(self, assignment_id: UUID) -> int:
         query = select(func.count(Submission.id)).where(Submission.assignment_id == assignment_id)
