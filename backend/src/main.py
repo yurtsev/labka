@@ -22,13 +22,18 @@ from src.core.di import (
     AnnouncementsProvider,
     AssignmentsProvider,
     AuthProvider,
+    CalendarProvider,
     CoursesProvider,
     DbProvider,
+    ExamsProvider,
     FeedProvider,
+    FinalGradesProvider,
     MaterialsProvider,
+    PersonalTasksProvider,
     ProfileProvider,
     ReviewsProvider,
     S3Provider,
+    ScheduleProvider,
     SecurityProvider,
     SubmissionsProvider,
 )
@@ -54,6 +59,11 @@ container = make_async_container(
     FeedProvider(),
     ReviewsProvider(),
     SubmissionsProvider(),
+    ScheduleProvider(),
+    PersonalTasksProvider(),
+    CalendarProvider(),
+    ExamsProvider(),
+    FinalGradesProvider(),
 )
 
 
