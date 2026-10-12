@@ -16,12 +16,15 @@ from src.api.materials.dto import Material, MaterialFields, MaterialFile, Upload
 from src.core.access import exc as access_exc
 from src.core.access.service import AccessService
 from src.core.db.dto.page import Page, PageRequest
+from src.core.db.enums import NotificationType
 from src.core.db.exc import IntegrityViolationError
 from src.core.db.models.course import Course
 from src.core.db.models.course_material import CourseMaterial
 from src.core.db.models.course_material_file import CourseMaterialFile
 from src.core.db.uow import UnitOfWork
 from src.core.errors import InternalError
+from src.core.notifications.dto import Payload
+from src.core.notifications.service import NotificationService
 from src.core.s3.dto import PresignedUpload
 from src.core.s3.exc import S3FileTooLargeError, S3ObjectNotFoundError
 from src.core.s3.service import S3Storage
@@ -31,10 +34,17 @@ from src.core.security.dto import CurrentUser
 class MaterialService:
     """Материалы курса: название, текст и файлы. Файлы лежат в S3, в БД — ключ и метаданные."""
 
-    def __init__(self, uow: UnitOfWork, access: AccessService, storage: S3Storage) -> None:
+    def __init__(
+        self,
+        uow: UnitOfWork,
+        access: AccessService,
+        storage: S3Storage,
+        notifications: NotificationService,
+    ) -> None:
         self._uow = uow
         self._access = access
         self._storage = storage
+        self._notifications = notifications
 
     async def list_materials(
         self, user: CurrentUser, course_id: UUID, page: PageRequest
@@ -91,7 +101,7 @@ class MaterialService:
             prefix=self._key_prefix(course_id),
             attached=self._uow.course_material_files.attached_keys,
         ):
-            await self._editable(user, course_id)
+            course = await self._editable(user, course_id)
             material = CourseMaterial(
                 id=uuid7(),
                 course_id=course_id,
@@ -100,6 +110,11 @@ class MaterialService:
                 files=[await self._stored_file(course_id, file) for file in files],
             )
             self._uow.course_materials.add(material)
+            await self._notifications.notify_course(
+                course.id,
+                NotificationType.MATERIAL_ADDED,
+                Payload(course_id=course.id, course_name=course.name, material_title=fields.title),
+            )
             await self._commit_files()
         return await self._reload(material.id)
 

@@ -24,21 +24,26 @@ from src.core.access import exc as access_exc
 from src.core.access.service import AccessService
 from src.core.db.dto.group import GroupSearch
 from src.core.db.dto.page import Page, PageRequest
-from src.core.db.enums import UserRole
+from src.core.db.enums import NotificationType, UserRole
 from src.core.db.exc import IntegrityViolationError
 from src.core.db.models.course import Course
 from src.core.db.models.group import Group
 from src.core.db.uow import UnitOfWork
 from src.core.errors import InternalError
+from src.core.notifications.dto import Payload
+from src.core.notifications.service import NotificationService
 from src.core.schedule.service import ScheduleService
 from src.core.security.dto import CurrentUser
 from src.core.utils.moscow_time import now_moscow
 
 
 class CourseService:
-    def __init__(self, uow: UnitOfWork, access: AccessService) -> None:
+    def __init__(
+        self, uow: UnitOfWork, access: AccessService, notifications: NotificationService
+    ) -> None:
         self._uow = uow
         self._access = access
+        self._notifications = notifications
 
     async def list_courses(
         self, user: CurrentUser, archived: bool, page: PageRequest
@@ -111,6 +116,8 @@ class CourseService:
         )
         self._apply_fields(course, fields)
         self._uow.courses.add(course)
+        for group in groups:
+            await self._notify_added(course, group.id)
         await self._uow.commit()
         return await self._reload(course.id)
 
@@ -151,6 +158,7 @@ class CourseService:
         if any(group.id == group_id for group in course.groups):
             raise GroupAlreadyInCourseError({"group_id": str(group_id)})
         course.groups.extend(await self._attachable_groups(user.user_id, [group_id]))
+        await self._notify_added(course, group_id)
         try:
             await self._uow.commit()
         except IntegrityViolationError as exc:
@@ -193,6 +201,13 @@ class CourseService:
         course.is_archived = archived
         await self._uow.commit()
         return await self._reload(course.id)
+
+    async def _notify_added(self, course: Course, group_id: UUID) -> None:
+        await self._notifications.notify_group(
+            group_id,
+            NotificationType.COURSE_ADDED,
+            Payload(course_id=course.id, course_name=course.name),
+        )
 
     async def _readable(self, user: CurrentUser, course_id: UUID) -> Course:
         try:

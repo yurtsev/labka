@@ -20,7 +20,7 @@ from src.api.exc.submissions import (
 from src.api.submissions.dto import Attempt, AttemptFile, AttemptReview, Attempts, UploadedFile
 from src.core.access import exc as access_exc
 from src.core.access.service import AccessService
-from src.core.db.enums import DeadlineType, ReviewVerdict, UserRole
+from src.core.db.enums import DeadlineType, NotificationType, ReviewVerdict, UserRole
 from src.core.db.exc import IntegrityViolationError
 from src.core.db.models.assignment import Assignment
 from src.core.db.models.course import Course
@@ -29,6 +29,8 @@ from src.core.db.models.submission_file import SubmissionFile
 from src.core.db.uow import UnitOfWork
 from src.core.errors import InternalError
 from src.core.grading.dto import Grade
+from src.core.notifications.dto import Payload
+from src.core.notifications.service import NotificationService
 from src.core.s3.dto import PresignedUpload
 from src.core.s3.exc import S3FileTooLargeError, S3ObjectNotFoundError
 from src.core.s3.service import S3Storage
@@ -38,10 +40,17 @@ from src.core.security.dto import CurrentUser
 class SubmissionService:
     """Сдача работ студентом: попытки с файлами и комментарием, история попыток."""
 
-    def __init__(self, uow: UnitOfWork, access: AccessService, storage: S3Storage) -> None:
+    def __init__(
+        self,
+        uow: UnitOfWork,
+        access: AccessService,
+        storage: S3Storage,
+        notifications: NotificationService,
+    ) -> None:
         self._uow = uow
         self._access = access
         self._storage = storage
+        self._notifications = notifications
 
     async def start_upload(
         self,
@@ -63,7 +72,7 @@ class SubmissionService:
             DeadlinePassedError: жёсткий дедлайн прошёл и пересдача не разрешена.
             FileTooLargeError: файл больше лимита.
         """
-        assignment = await self._submittable_assignment(user, course_id, assignment_id)
+        _, assignment = await self._submittable_assignment(user, course_id, assignment_id)
         history = await self._uow.submissions.history(assignment.id, user.user_id)
         self._check_can_submit(assignment, history, datetime.now(UTC))
         self._check_size(file_size)
@@ -106,7 +115,7 @@ class SubmissionService:
             prefix=prefix,
             attached=self._uow.submission_files.attached_keys,
         ):
-            assignment = await self._submittable_assignment(user, course_id, assignment_id)
+            course, assignment = await self._submittable_assignment(user, course_id, assignment_id)
             if not comment and not files:
                 raise EmptySubmissionError
             history = await self._uow.submissions.history(assignment.id, user.user_id)
@@ -121,6 +130,7 @@ class SubmissionService:
                 files=[await self._stored_file(prefix, file) for file in files],
             )
             self._uow.submissions.add(submission)
+            await self._notify_teacher(user, course, assignment, submission)
             try:
                 await self._uow.commit()
             except IntegrityViolationError as exc:
@@ -151,15 +161,39 @@ class SubmissionService:
         history = await self._uow.submissions.history(assignment.id, user.user_id)
         return Attempts(items=tuple([await self._to_dto(item) for item in history]))
 
+    async def _notify_teacher(
+        self, user: CurrentUser, course: Course, assignment: Assignment, submission: Submission
+    ) -> None:
+        student = await self._uow.users.get_by_id(user.user_id)
+        if student is None:
+            raise InternalError({"user_id": str(user.user_id)})
+        name = " ".join(
+            part for part in (student.last_name, student.first_name, student.middle_name) if part
+        )
+        await self._notifications.notify(
+            [course.teacher_id],
+            NotificationType.SUBMISSION_CREATED,
+            Payload(
+                course_id=course.id,
+                course_name=course.name,
+                assignment_id=assignment.id,
+                assignment_title=assignment.title,
+                student_id=student.id,
+                student_name=name,
+                submission_id=submission.id,
+                attempt=submission.number,
+            ),
+        )
+
     async def _submittable_assignment(
         self, user: CurrentUser, course_id: UUID, assignment_id: UUID
-    ) -> Assignment:
+    ) -> tuple[Course, Assignment]:
         course = await self._readable(user, course_id)
         if user.role != UserRole.STUDENT:
             raise StudentOnlyError
         if course.is_archived:
             raise CourseArchivedError({"course_id": str(course_id)})
-        return await self._get_assignment(course_id, assignment_id)
+        return course, await self._get_assignment(course_id, assignment_id)
 
     @staticmethod
     def _check_can_submit(

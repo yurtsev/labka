@@ -26,7 +26,7 @@ from src.core.access import exc as access_exc
 from src.core.access.service import AccessService
 from src.core.db.dto.page import Page, PageRequest
 from src.core.db.dto.progress import StudentProgressFilter
-from src.core.db.enums import UserRole
+from src.core.db.enums import NotificationType, UserRole
 from src.core.db.exc import IntegrityViolationError
 from src.core.db.models.assignment import Assignment as AssignmentModel
 from src.core.db.models.assignment_file import AssignmentFile as AssignmentFileModel
@@ -34,6 +34,8 @@ from src.core.db.models.course import Course
 from src.core.db.uow import UnitOfWork
 from src.core.grading.dto import Progress, Summary
 from src.core.grading.service import GradingService
+from src.core.notifications.dto import Payload
+from src.core.notifications.service import NotificationService
 from src.core.s3.dto import PresignedUpload
 from src.core.s3.exc import S3FileTooLargeError, S3ObjectNotFoundError
 from src.core.s3.service import S3Storage
@@ -43,10 +45,17 @@ from src.core.security.dto import CurrentUser
 class AssignmentService:
     """Задания курса: создаёт и правит преподаватель, студенты курса видят их сразу."""
 
-    def __init__(self, uow: UnitOfWork, access: AccessService, storage: S3Storage) -> None:
+    def __init__(
+        self,
+        uow: UnitOfWork,
+        access: AccessService,
+        storage: S3Storage,
+        notifications: NotificationService,
+    ) -> None:
         self._uow = uow
         self._access = access
         self._storage = storage
+        self._notifications = notifications
 
     async def start_upload(
         self, user: CurrentUser, course_id: UUID, content_type: str, file_size: int
@@ -88,7 +97,7 @@ class AssignmentService:
             prefix=self._key_prefix(course_id),
             attached=self._uow.assignment_files.attached_keys,
         ):
-            await self._editable(user, course_id)
+            course = await self._editable(user, course_id)
             assignment = AssignmentModel(
                 id=uuid7(),
                 course_id=course_id,
@@ -96,6 +105,11 @@ class AssignmentService:
             )
             self._apply_fields(assignment, fields)
             self._uow.assignments.add(assignment)
+            await self._notifications.notify_course(
+                course.id,
+                NotificationType.ASSIGNMENT_CREATED,
+                self._payload(course, assignment),
+            )
             await self._commit_files()
         return await self.get(user, course_id, assignment.id)
 
@@ -139,7 +153,7 @@ class AssignmentService:
             AssignmentNotFoundError: задания нет в этом курсе.
             ScaleLockedError: шкала меняется, а попытки уже есть.
         """
-        await self._editable(user, course_id)
+        course = await self._editable(user, course_id)
         assignment = await self._get_assignment(course_id, assignment_id)
         current_scale = (assignment.scale_type, assignment.scale_min, assignment.scale_max)
         new_scale = (
@@ -152,6 +166,7 @@ class AssignmentService:
         ):
             raise ScaleLockedError({"assignment_id": str(assignment.id)})
         self._apply_fields(assignment, fields)
+        await self._notify_updated(course, assignment)
         await self._uow.commit()
         return await self.get(user, course_id, assignment.id)
 
@@ -175,12 +190,13 @@ class AssignmentService:
             prefix=self._key_prefix(course_id),
             attached=self._uow.assignment_files.attached_keys,
         ):
-            await self._editable(user, course_id)
+            course = await self._editable(user, course_id)
             assignment = await self._get_assignment(course_id, assignment_id)
             stored = await self._stored_file(course_id, file)
             stored.assignment_id = assignment.id
             self._uow.assignment_files.add(stored)
             await self._uow.assignments.touch(assignment.id)
+            await self._notify_updated(course, assignment)
             await self._commit_files()
         return await self.get(user, course_id, assignment.id)
 
@@ -200,13 +216,14 @@ class AssignmentService:
             AssignmentFileNotFoundError: файла нет в этом задании.
             S3UnavailableError, S3TimeoutError, S3BadResponseError: файл удалить не удалось.
         """
-        await self._editable(user, course_id)
+        course = await self._editable(user, course_id)
         assignment = await self._get_assignment(course_id, assignment_id)
         file = await self._uow.assignment_files.get_by_id(file_id)
         if file is None or file.assignment_id != assignment.id:
             raise AssignmentFileNotFoundError({"file_id": str(file_id)})
         await self._uow.assignment_files.delete(file)
         await self._uow.assignments.touch(assignment.id)
+        await self._notify_updated(course, assignment)
         await self._uow.flush()
         await self._storage.delete(file.file_key)
         await self._uow.commit()
@@ -270,6 +287,24 @@ class AssignmentService:
                 )
                 for item in students.items
             )
+        )
+
+    async def _notify_updated(self, course: Course, assignment: AssignmentModel) -> None:
+        """Сообщает студентам, что задание изменили; серия правок — одно непрочитанное."""
+        await self._notifications.notify_course(
+            course.id,
+            NotificationType.ASSIGNMENT_UPDATED,
+            self._payload(course, assignment),
+            dedup_key=f"assignment_updated:{assignment.id}",
+        )
+
+    @staticmethod
+    def _payload(course: Course, assignment: AssignmentModel) -> Payload:
+        return Payload(
+            course_id=course.id,
+            course_name=course.name,
+            assignment_id=assignment.id,
+            assignment_title=assignment.title,
         )
 
     async def _stored_file(self, course_id: UUID, file: UploadedFile) -> AssignmentFileModel:

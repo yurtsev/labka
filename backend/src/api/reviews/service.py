@@ -31,7 +31,7 @@ from src.core.access import exc as access_exc
 from src.core.access.service import AccessService
 from src.core.db.dto.page import Page, PageRequest
 from src.core.db.dto.submission import PendingFilter
-from src.core.db.enums import ReviewVerdict, UserRole
+from src.core.db.enums import NotificationType, ReviewVerdict, UserRole
 from src.core.db.exc import IntegrityViolationError
 from src.core.db.models.assignment import Assignment
 from src.core.db.models.course import Course
@@ -42,6 +42,8 @@ from src.core.errors import InternalError
 from src.core.grading import exc as grading_exc
 from src.core.grading.dto import Grade
 from src.core.grading.service import GradingService
+from src.core.notifications.dto import Payload
+from src.core.notifications.service import NotificationService
 from src.core.s3.service import S3Storage
 from src.core.security.dto import CurrentUser
 
@@ -49,10 +51,17 @@ from src.core.security.dto import CurrentUser
 class ReviewService:
     """Проверка попыток преподавателем: очередь, вердикт и оценка, исправление оценки."""
 
-    def __init__(self, uow: UnitOfWork, access: AccessService, storage: S3Storage) -> None:
+    def __init__(
+        self,
+        uow: UnitOfWork,
+        access: AccessService,
+        storage: S3Storage,
+        notifications: NotificationService,
+    ) -> None:
         self._uow = uow
         self._access = access
         self._storage = storage
+        self._notifications = notifications
 
     async def queue(
         self, user: CurrentUser, search: QueueFilter, page: PageRequest
@@ -146,6 +155,11 @@ class ReviewService:
                 comment=decision.comment,
             )
         )
+        await self._notifications.notify(
+            [submission.student_id],
+            NotificationType.SUBMISSION_REVIEWED,
+            self._payload(course, assignment, submission, decision.verdict),
+        )
         try:
             await self._uow.commit()
         except IntegrityViolationError as exc:
@@ -184,8 +198,27 @@ class ReviewService:
         review.score = correction.grade.score
         review.is_passed = correction.grade.passed
         review.comment = correction.comment
+        await self._notifications.notify(
+            [submission.student_id],
+            NotificationType.GRADE_CHANGED,
+            self._payload(course, assignment, submission, review.verdict),
+            dedup_key=f"grade_changed:{submission.id}",
+        )
         await self._uow.commit()
         return await self._reload(submission.id)
+
+    @staticmethod
+    def _payload(
+        course: Course, assignment: Assignment, submission: Submission, verdict: ReviewVerdict
+    ) -> Payload:
+        return Payload(
+            course_id=course.id,
+            course_name=course.name,
+            assignment_id=assignment.id,
+            assignment_title=assignment.title,
+            submission_id=submission.id,
+            verdict=verdict,
+        )
 
     async def _get_assignment(self, course_id: UUID, assignment_id: UUID) -> Assignment:
         assignment = await self._uow.assignments.get_by_id(assignment_id)

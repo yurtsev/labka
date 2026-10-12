@@ -21,13 +21,15 @@ from src.api.schedule.dto import (
 )
 from src.core.access import exc as access_exc
 from src.core.access.service import AccessService
-from src.core.db.enums import UserRole
+from src.core.db.enums import NotificationType, UserRole
 from src.core.db.models.course import Course
 from src.core.db.models.extra_lesson import ExtraLesson
 from src.core.db.models.group import Group
 from src.core.db.models.schedule_rule import ScheduleRule
 from src.core.db.uow import UnitOfWork
 from src.core.errors import InternalError
+from src.core.notifications.dto import Payload
+from src.core.notifications.service import NotificationService
 from src.core.schedule import exc as schedule_exc
 from src.core.schedule.dto import Slot
 from src.core.schedule.service import ScheduleService
@@ -38,9 +40,12 @@ class ScheduleCourseService:
     """Расписание курса: правила с повтором и разовые занятия, только в окнах пар и в
     пределах семестра курса. Правит преподаватель, студент видит свою группу."""
 
-    def __init__(self, uow: UnitOfWork, access: AccessService) -> None:
+    def __init__(
+        self, uow: UnitOfWork, access: AccessService, notifications: NotificationService
+    ) -> None:
         self._uow = uow
         self._access = access
+        self._notifications = notifications
 
     @staticmethod
     def slots() -> Slots:
@@ -83,6 +88,7 @@ class ScheduleCourseService:
         rule = ScheduleRule(id=uuid7(), course_id=course.id)
         self._apply_rule(rule, fields, slot)
         self._uow.schedule_rules.add(rule)
+        await self._notify_changed(course, fields.group_id)
         await self._uow.commit()
         return await self._reload_rule(course.id, rule.id)
 
@@ -104,7 +110,9 @@ class ScheduleCourseService:
         if rule is None:
             raise RuleNotFoundError({"rule_id": str(rule_id)})
         await self._check_group(course, fields.group_id)
+        previous_group_id = rule.group_id
         self._apply_rule(rule, fields, self._slot(fields.slot))
+        await self._notify_changed(course, fields.group_id, previous_group_id)
         await self._uow.commit()
         return await self._reload_rule(course.id, rule.id)
 
@@ -122,6 +130,7 @@ class ScheduleCourseService:
         if rule is None:
             raise RuleNotFoundError({"rule_id": str(rule_id)})
         await self._uow.schedule_rules.delete(rule)
+        await self._notify_changed(course, rule.group_id)
         await self._uow.commit()
 
     async def create_extra(self, user: CurrentUser, course_id: UUID, fields: ExtraFields) -> Extra:
@@ -142,6 +151,7 @@ class ScheduleCourseService:
         extra = ExtraLesson(id=uuid7(), course_id=course.id)
         self._apply_extra(extra, fields, slot)
         self._uow.extra_lessons.add(extra)
+        await self._notify_changed(course, fields.group_id)
         await self._uow.commit()
         return await self._reload_extra(course.id, extra.id)
 
@@ -166,7 +176,9 @@ class ScheduleCourseService:
         await self._check_group(course, fields.group_id)
         slot = self._slot(fields.slot)
         self._check_day(course, fields)
+        previous_group_id = extra.group_id
         self._apply_extra(extra, fields, slot)
+        await self._notify_changed(course, fields.group_id, previous_group_id)
         await self._uow.commit()
         return await self._reload_extra(course.id, extra.id)
 
@@ -184,7 +196,22 @@ class ScheduleCourseService:
         if extra is None:
             raise ExtraLessonNotFoundError({"extra_lesson_id": str(extra_id)})
         await self._uow.extra_lessons.delete(extra)
+        await self._notify_changed(course, extra.group_id)
         await self._uow.commit()
+
+    async def _notify_changed(
+        self, course: Course, group_id: UUID, previous_group_id: UUID | None = None
+    ) -> None:
+        """Сообщает студентам группы (и прежней, если занятие перенесли), что расписание
+        изменилось; серия правок — одно непрочитанное уведомление."""
+        for affected in dict.fromkeys([group_id, previous_group_id]):
+            if affected is not None:
+                await self._notifications.notify_group(
+                    affected,
+                    NotificationType.SCHEDULE_CHANGED,
+                    Payload(course_id=course.id, course_name=course.name),
+                    dedup_key=f"schedule:{course.id}",
+                )
 
     async def _check_group(self, course: Course, group_id: UUID) -> None:
         if not await self._uow.courses.has_group(course.id, group_id):

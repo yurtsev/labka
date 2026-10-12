@@ -9,19 +9,25 @@ from src.api.exc.announcements import (
 )
 from src.core.access import exc as access_exc
 from src.core.access.service import AccessService
+from src.core.db.enums import NotificationType
 from src.core.db.models.announcement import Announcement as AnnouncementModel
 from src.core.db.models.course import Course
 from src.core.db.uow import UnitOfWork
 from src.core.errors import InternalError
+from src.core.notifications.dto import Payload
+from src.core.notifications.service import NotificationService
 from src.core.security.dto import CurrentUser
 
 
 class AnnouncementService:
     """Объявления в ленте курса: текст в markdown, пишет и правит преподаватель."""
 
-    def __init__(self, uow: UnitOfWork, access: AccessService) -> None:
+    def __init__(
+        self, uow: UnitOfWork, access: AccessService, notifications: NotificationService
+    ) -> None:
         self._uow = uow
         self._access = access
+        self._notifications = notifications
 
     async def create(self, user: CurrentUser, course_id: UUID, text: str) -> Announcement:
         """Публикует объявление в ленте курса.
@@ -31,9 +37,14 @@ class AnnouncementService:
             CourseForbiddenError: курс чужой или пользователь не преподаватель.
             CourseArchivedError: курс в архиве.
         """
-        await self._editable(user, course_id)
+        course = await self._editable(user, course_id)
         announcement = AnnouncementModel(id=uuid7(), course_id=course_id, text=text)
         self._uow.announcements.add(announcement)
+        await self._notifications.notify_course(
+            course.id,
+            NotificationType.ANNOUNCEMENT_CREATED,
+            Payload(course_id=course.id, course_name=course.name),
+        )
         await self._uow.commit()
         return await self._reload(announcement.id)
 

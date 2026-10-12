@@ -14,20 +14,25 @@ from src.api.final_grades.dto import FinalResult, MyGrade, StudentGrade
 from src.core.access import exc as access_exc
 from src.core.access.service import AccessService
 from src.core.db.dto.page import Page, PageRequest
-from src.core.db.enums import ExamType, UserRole
+from src.core.db.enums import ExamType, NotificationType, UserRole
 from src.core.db.models.course import Course
 from src.core.db.models.final_grade import FinalGrade
 from src.core.db.uow import UnitOfWork
 from src.core.errors import InternalError
+from src.core.notifications.dto import Payload
+from src.core.notifications.service import NotificationService
 from src.core.security.dto import CurrentUser
 
 
 class FinalGradeService:
     """Итоговые оценки по курсу: 2–5. Ставит преподаватель, студент видит свою."""
 
-    def __init__(self, uow: UnitOfWork, access: AccessService) -> None:
+    def __init__(
+        self, uow: UnitOfWork, access: AccessService, notifications: NotificationService
+    ) -> None:
         self._uow = uow
         self._access = access
+        self._notifications = notifications
 
     async def list_students(
         self, user: CurrentUser, course_id: UUID, group_id: UUID | None, page: PageRequest
@@ -120,6 +125,17 @@ class FinalGradeService:
         else:
             final.grade = result.grade
             final.is_passed = result.passed
+        await self._notifications.notify(
+            [student_id],
+            NotificationType.FINAL_RESULT_SET,
+            Payload(
+                course_id=course.id,
+                course_name=course.name,
+                grade=result.grade,
+                passed=result.passed,
+            ),
+            dedup_key=f"final_result:{course.id}",
+        )
         await self._uow.commit()
         return await self._row(course.id, student_id)
 

@@ -14,12 +14,14 @@ from src.api.exc.exams import (
 )
 from src.core.access import exc as access_exc
 from src.core.access.service import AccessService
-from src.core.db.enums import UserRole
+from src.core.db.enums import NotificationType, UserRole
 from src.core.db.exc import IntegrityViolationError
 from src.core.db.models.course import Course
 from src.core.db.models.course_exam import CourseExam
 from src.core.db.uow import UnitOfWork
 from src.core.errors import InternalError
+from src.core.notifications.dto import Payload
+from src.core.notifications.service import NotificationService
 from src.core.schedule import exc as schedule_exc
 from src.core.schedule.dto import Slot
 from src.core.schedule.service import ScheduleService
@@ -30,9 +32,12 @@ class ExamService:
     """Зачёты и экзамены курса: у группы в курсе один, дата в семестре, время — окно пары.
     Назначает преподаватель, студент видит экзамен своей группы."""
 
-    def __init__(self, uow: UnitOfWork, access: AccessService) -> None:
+    def __init__(
+        self, uow: UnitOfWork, access: AccessService, notifications: NotificationService
+    ) -> None:
         self._uow = uow
         self._access = access
+        self._notifications = notifications
 
     async def list_exams(self, user: CurrentUser, course_id: UUID) -> tuple[Exam, ...]:
         """Экзамены курса по дате; студенту — только его группы.
@@ -68,6 +73,7 @@ class ExamService:
         exam = CourseExam(id=uuid7(), course_id=course.id)
         self._apply(exam, fields, slot)
         self._uow.course_exams.add(exam)
+        await self._notify(course, exam, NotificationType.EXAM_ASSIGNED, fields.group_id)
         await self._commit(fields.group_id)
         return await self._reload(course.id, exam.id)
 
@@ -102,7 +108,19 @@ class ExamService:
             exam.exam_type,
         ) and await self._uow.final_grades.exists_for_group(course.id, exam.group_id):
             raise ResultsExistError({"group_id": str(exam.group_id)})
+        previous_group_id = exam.group_id
         self._apply(exam, fields, slot)
+        await self._notify(
+            course,
+            exam,
+            NotificationType.EXAM_CHANGED,
+            fields.group_id,
+            dedup_key=f"exam:{exam.id}",
+        )
+        if fields.group_id != previous_group_id:
+            await self._notify(
+                course, exam, NotificationType.EXAM_CHANGED, previous_group_id, removed=True
+            )
         await self._commit(fields.group_id)
         return await self._reload(course.id, exam.id)
 
@@ -123,7 +141,32 @@ class ExamService:
         if await self._uow.final_grades.exists_for_group(course.id, exam.group_id):
             raise ResultsExistError({"group_id": str(exam.group_id)})
         await self._uow.course_exams.delete(exam)
+        await self._notify(course, exam, NotificationType.EXAM_CHANGED, exam.group_id, removed=True)
         await self._uow.commit()
+
+    async def _notify(
+        self,
+        course: Course,
+        exam: CourseExam,
+        type: NotificationType,
+        group_id: UUID,
+        *,
+        removed: bool = False,
+        dedup_key: str | None = None,
+    ) -> None:
+        await self._notifications.notify_group(
+            group_id,
+            type,
+            Payload(
+                course_id=course.id,
+                course_name=course.name,
+                exam_type=exam.exam_type,
+                day=exam.day,
+                starts_at=exam.starts_at,
+                removed=removed,
+            ),
+            dedup_key=dedup_key,
+        )
 
     async def _checked(self, course: Course, fields: ExamFields) -> Slot:
         if not await self._uow.courses.has_group(course.id, fields.group_id):
