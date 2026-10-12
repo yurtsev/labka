@@ -1,5 +1,6 @@
 from datetime import time
 from pathlib import Path
+from urllib.parse import quote
 
 from pydantic import BaseModel
 from pydantic_settings import (
@@ -34,6 +35,15 @@ class Database(BaseModel):
     @property
     def async_database_url(self) -> str:
         return f"postgresql+asyncpg://{self.postgres_username}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+
+    @property
+    def asyncpg_dsn(self) -> str:
+        """Адрес для прямого соединения asyncpg (LISTEN вне пула SQLAlchemy)."""
+        user, password = (
+            quote(self.postgres_username, safe=""),
+            quote(self.postgres_password, safe=""),
+        )
+        return f"postgresql://{user}:{password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
 
     @property
     def alembic_url(self) -> str:
@@ -103,6 +113,14 @@ class Schedule(BaseModel):
     personal_tasks_max_range_days: int = 366
 
 
+class Notifications(BaseModel):
+    # За сколько часов до дедлайна напоминать и как часто проверять задания.
+    reminder_window_hours: int = 24
+    reminder_interval_minutes: int = 5
+    # Как часто WebSocket спрашивает «ты здесь?» и сколько ждёт ответа.
+    websocket_ping_seconds: int = 30
+
+
 class Logging(BaseModel):
     level: str = "INFO"
 
@@ -121,6 +139,7 @@ class Config(BaseSettings):
     pagination: Pagination = Pagination()
     s3: S3 = S3()
     schedule: Schedule = Schedule()
+    notifications: Notifications = Notifications()
 
     def missing_required(self) -> list[str]:
         """Настройки, без которых приложение не запускается, но которые не заданы."""

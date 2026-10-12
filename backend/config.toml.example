@@ -51,3 +51,8 @@ spring_starts = { month = 2, day = 1 }
 spring_classes_end = { month = 7, day = 10 }
 spring_ends = { month = 7, day = 10 }
 personal_tasks_max_range_days = 366
+
+[notifications]
+reminder_window_hours = 24
+reminder_interval_minutes = 5
+websocket_ping_seconds = 30
