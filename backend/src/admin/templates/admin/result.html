@@ -1,0 +1,12 @@
+{% extends "sqladmin/layout.html" %}
+{% block content %}
+<div class="col-12">
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">{{ title }}</h3></div>
+    <div class="card-body">
+      {% for line in lines %}<p>{{ line }}</p>{% endfor %}
+      <a class="btn btn-primary" href="{{ back_url }}">{{ back_label|default("Назад к списку", true) }}</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

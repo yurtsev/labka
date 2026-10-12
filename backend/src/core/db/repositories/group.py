@@ -17,6 +17,22 @@ class GroupRepository(BaseRepository[Group]):
         query = select(Group).where(Group.registration_code_hash == code_hash)
         return await self._session.scalar(query)
 
+    async def names_taken(self, names: Collection[str]) -> list[str]:
+        """Какие из названий уже заняты группами, по алфавиту."""
+        if not names:
+            return []
+        query = select(Group.name).where(Group.name.in_(names)).order_by(Group.name)
+        return list(await self._session.scalars(query))
+
+    async def list_all(self) -> list[Group]:
+        """Все группы по названию."""
+        return list(await self._session.scalars(select(Group).order_by(Group.name)))
+
+    async def list_active(self) -> list[Group]:
+        """Активные группы по названию."""
+        query = select(Group).where(Group.is_active.is_(True)).order_by(Group.name)
+        return list(await self._session.scalars(query))
+
     async def get_many(self, group_ids: Collection[UUID]) -> list[Group]:
         if not group_ids:
             return []

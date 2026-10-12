@@ -1,13 +1,26 @@
+from collections.abc import Sequence
+from datetime import UTC, datetime
 from uuid import UUID, uuid7
 
+from email_validator import EmailNotValidError, validate_email
+
 from src.admin.exc.groups import (
+    BatchSizeError,
     DirectionNotFoundError,
+    GroupNamesTakenError,
     GroupNameTakenError,
     GroupNotFoundError,
     InviteEmailTakenError,
     InviteNotFoundError,
 )
-from src.admin.groups.dto import CreatedGroup, GroupFields
+from src.admin.groups.dto import (
+    BatchFields,
+    CreatedBatchGroup,
+    CreatedGroup,
+    GroupFields,
+    InviteImport,
+)
+from src.config import cfg
 from src.core.db.enums import StudyLevel
 from src.core.db.exc import IntegrityViolationError
 from src.core.db.models.direction import Direction
@@ -60,6 +73,127 @@ class AdminGroupService:
         is_auto_name_kept = fields.name == group.name == old_auto_name
         await self._apply_fields(group, fields, None if is_auto_name_kept else fields.name)
         await self._commit_group()
+
+    async def create_batch(self, fields: BatchFields) -> list[CreatedBatchGroup]:
+        """Создаёт группы `БВТ2601…БВТ260N` и каждой выпускает код регистрации.
+
+        Либо создаются все, либо ни одной: если какое-то название занято, ничего не меняется.
+
+        Returns:
+            Названия и коды в открытом виде: показать коды можно только сейчас.
+
+        Raises:
+            BatchSizeError: количество вне границ.
+            DirectionNotFoundError: направления нет.
+            GroupNamesTakenError: хотя бы одно из названий уже занято.
+        """
+        if not 1 <= fields.count <= cfg.administration.max_batch_groups:
+            raise BatchSizeError({"max": cfg.administration.max_batch_groups})
+        direction = await self._get_direction(fields.direction_id)
+        names = [
+            self._auto_name(direction, fields.level, fields.admission_year, number)
+            for number in range(1, fields.count + 1)
+        ]
+        taken = await self._uow.groups.names_taken(names)
+        if taken:
+            raise GroupNamesTakenError({"names": taken})
+        created = []
+        for number, name in enumerate(names, start=1):
+            code = self._security.issue_registration_code()
+            self._uow.groups.add(
+                Group(
+                    id=uuid7(),
+                    direction_id=direction.id,
+                    level=fields.level,
+                    study_form=fields.study_form,
+                    admission_year=fields.admission_year,
+                    number=number,
+                    name=name,
+                    registration_code_hash=self._security.hash_token(code),
+                )
+            )
+            created.append(CreatedBatchGroup(name=name, registration_code=code))
+        await self._commit_group()
+        return created
+
+    async def set_active(
+        self, group_ids: Sequence[UUID], active: bool, *, with_students: bool = False
+    ) -> int:
+        """Деактивирует или возвращает группы; по желанию вместе с их студентами.
+
+        Неактивную группу нельзя добавить в курс, по её коду нельзя зарегистрироваться.
+        Деактивированные студенты не могут войти, их сессии завершаются; вернуть студентов
+        в работу админ может отдельно.
+
+        Returns:
+            Сколько групп изменено.
+
+        Raises:
+            GroupNotFoundError: ни одной из выбранных групп нет.
+        """
+        groups = await self._uow.groups.get_many(group_ids)
+        if not groups:
+            raise GroupNotFoundError({"group_ids": [str(item) for item in group_ids]})
+        for group in groups:
+            group.is_active = active
+        if with_students and not active:
+            student_ids = await self._uow.users.deactivate_students_of_groups(
+                [group.id for group in groups]
+            )
+            await self._uow.sessions.revoke_all_for_users(student_ids, datetime.now(UTC))
+        await self._uow.commit()
+        return len(groups)
+
+    async def import_invites(self, group_id: UUID, tokens: Sequence[str]) -> InviteImport:
+        """Добавляет почты в список группы и отдельно называет те, что не добавлены.
+
+        Raises:
+            GroupNotFoundError: группы нет.
+        """
+        await self._get_group(group_id)
+        valid: list[str] = []
+        invalid: list[str] = []
+        repeated: list[str] = []
+        for token in tokens:
+            email = self._normalize_email(token)
+            if email is None:
+                invalid.append(token)
+            elif email in valid:
+                repeated.append(email)
+            else:
+                valid.append(email)
+        added = await self._uow.group_invites.add_new([(group_id, email) for email in valid])
+        await self._uow.commit()
+        return InviteImport(
+            added=tuple(email for email in valid if email in added),
+            invalid=tuple(invalid),
+            repeated=tuple(repeated),
+            already_listed=tuple(email for email in valid if email not in added),
+        )
+
+    async def list_directions(self) -> list[Direction]:
+        return await self._uow.directions.list_all()
+
+    async def list_groups(self) -> list[Group]:
+        return await self._uow.groups.list_all()
+
+    async def list_active_groups(self) -> list[Group]:
+        return await self._uow.groups.list_active()
+
+    async def get_group_name(self, group_id: UUID) -> str:
+        """Название группы.
+
+        Raises:
+            GroupNotFoundError: группы нет.
+        """
+        return (await self._get_group(group_id)).name
+
+    @staticmethod
+    def _normalize_email(token: str) -> str | None:
+        try:
+            return validate_email(token.strip(), check_deliverability=False).normalized.lower()
+        except EmailNotValidError:
+            return None
 
     async def reissue_code(self, group_id: UUID) -> str:
         """Выпускает новый код регистрации; старый сразу перестаёт действовать.

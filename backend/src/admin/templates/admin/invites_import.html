@@ -1,0 +1,54 @@
+{% extends "sqladmin/layout.html" %}
+{% block content %}
+<div class="col-12">
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">Загрузить почты в группу</h3></div>
+    <div class="card-body">
+      {% if error %}
+      <div class="alert alert-danger" role="alert">{{ error }}</div>
+      {% endif %}
+      {% if report %}
+      <div class="alert alert-success" role="alert">Добавлено почт: {{ report.added|length }}</div>
+      {% for title, items in [
+        ("Не похоже на почту", report.invalid),
+        ("Повторяется в списке", report.repeated),
+        ("Уже есть в списке одной из групп", report.already_listed)] %}
+      {% if items %}
+      <div class="mb-3">
+        <h4>{{ title }} ({{ items|length }})</h4>
+        <ul>{% for item in items %}<li>{{ item }}</li>{% endfor %}</ul>
+      </div>
+      {% endif %}
+      {% endfor %}
+      <a class="btn btn-primary" href="{{ invites_url }}">К почтам групп</a>
+      <a class="btn" href="{{ import_url }}">Загрузить ещё</a>
+      {% else %}
+      <form method="post" enctype="multipart/form-data">
+        <fieldset class="form-fieldset">
+          <div class="mb-3">
+            <label class="form-label" for="group">Группа</label>
+            <select class="form-select" id="group" name="group" required>
+              {% for item in groups %}
+              <option value="{{ item.id }}" {% if form_group == item.id|string %}selected{% endif %}>{{ item.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="emails">Список почт</label>
+            <textarea class="form-control" id="emails" name="emails" rows="8"
+              placeholder="по одной на строку">{{ form_emails }}</textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="csv">или CSV-файл</label>
+            <input class="form-control" type="file" id="csv" name="csv" accept=".csv,text/csv">
+            <div class="form-text">Почта — в первом столбце. Заголовок «email» или «почта» пропускается.</div>
+          </div>
+        </fieldset>
+        <input type="submit" class="btn btn-primary" value="Добавить">
+        <a class="btn" href="{{ invites_url }}">Отмена</a>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

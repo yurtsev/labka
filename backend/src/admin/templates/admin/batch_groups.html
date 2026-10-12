@@ -1,0 +1,84 @@
+{% extends "sqladmin/layout.html" %}
+{% block content %}
+<div class="col-12">
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">Создать группы пачкой</h3></div>
+    <div class="card-body">
+      {% if error %}
+      <div class="alert alert-danger" role="alert">
+        {{ error }}{% if taken %}: {{ taken|join(", ") }}{% endif %}
+      </div>
+      {% endif %}
+      {% if created %}
+      <div class="alert alert-warning" role="alert">
+        Коды регистрации показаны один раз: передайте каждый своей группе.
+      </div>
+      <div class="table-responsive">
+        <table class="table table-vcenter">
+          <thead><tr><th>Группа</th><th>Код регистрации</th></tr></thead>
+          <tbody>
+            {% for item in created %}
+            <tr><td>{{ item.name }}</td><td><code>{{ item.registration_code }}</code></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <button type="button" class="btn btn-outline-secondary" id="copy-all"
+        data-text="{% for item in created %}{{ item.name }}: {{ item.registration_code }}&#10;{% endfor %}">
+        Скопировать все
+      </button>
+      <a class="btn btn-primary" href="{{ groups_url }}">К списку групп</a>
+      <script>
+        document.getElementById("copy-all").addEventListener("click", function (event) {
+          navigator.clipboard.writeText(event.currentTarget.dataset.text);
+        });
+      </script>
+      {% else %}
+      <form method="post">
+        <fieldset class="form-fieldset">
+          <div class="mb-3">
+            <label class="form-label" for="direction">Направление</label>
+            <select class="form-select" id="direction" name="direction" required>
+              {% for item in directions %}
+              <option value="{{ item.id }}" {% if form.direction == item.id|string %}selected{% endif %}>
+                {{ item.short_name }} — {{ item.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="level">Уровень</label>
+            <select class="form-select" id="level" name="level" required>
+              {% for value, label in levels %}
+              <option value="{{ value }}" {% if form.level == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="study_form">Форма обучения</label>
+            <select class="form-select" id="study_form" name="study_form" required>
+              {% for value, label in study_forms %}
+              <option value="{{ value }}" {% if form.study_form == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="admission_year">Год набора</label>
+            <input class="form-control" type="number" id="admission_year" name="admission_year"
+              min="2000" max="2100" value="{{ form.admission_year }}" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="count">Сколько групп (от 1 до {{ max_count }})</label>
+            <input class="form-control" type="number" id="count" name="count" min="1"
+              max="{{ max_count }}" value="{{ form.count }}" required>
+            <div class="form-text">Номера по порядку с 1: например БВТ2601, БВТ2602, …</div>
+          </div>
+        </fieldset>
+        <input type="submit" class="btn btn-primary" value="Создать">
+        <a class="btn" href="{{ groups_url }}">Отмена</a>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

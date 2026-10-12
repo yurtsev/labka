@@ -1,4 +1,4 @@
-from src.core.errors import ConflictError, NotFoundError
+from src.core.errors import ConflictError, NotFoundError, RuleViolationError
 
 
 class DirectionNotFoundError(NotFoundError):
@@ -24,3 +24,13 @@ class InviteNotFoundError(NotFoundError):
 class InviteEmailTakenError(ConflictError):
     code = "admin.invite_email_taken"
     message = "Эта почта уже есть в списке одной из групп"
+
+
+class GroupNamesTakenError(ConflictError):
+    code = "admin.group_names_taken"
+    message = "Группы с такими названиями уже есть, ничего не создано"
+
+
+class BatchSizeError(RuleViolationError):
+    code = "admin.batch_size"
+    message = "Количество групп вне допустимых границ"

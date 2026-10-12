@@ -22,11 +22,31 @@ class StudyLevel(StrEnum):
             case StudyLevel.MASTER:
                 return "М"
 
+    @property
+    def label(self) -> str:
+        match self:
+            case StudyLevel.BACHELOR:
+                return "Бакалавриат"
+            case StudyLevel.SPECIALIST:
+                return "Специалитет"
+            case StudyLevel.MASTER:
+                return "Магистратура"
+
 
 class StudyForm(StrEnum):
     FULL_TIME = "full_time"
     PART_TIME = "part_time"
     EXTRAMURAL = "extramural"
+
+    @property
+    def label(self) -> str:
+        match self:
+            case StudyForm.FULL_TIME:
+                return "Очная"
+            case StudyForm.PART_TIME:
+                return "Очно-заочная"
+            case StudyForm.EXTRAMURAL:
+                return "Заочная"
 
 
 class UserRole(StrEnum):
