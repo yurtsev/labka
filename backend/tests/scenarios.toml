@@ -424,6 +424,12 @@ layer = "integration"
 domain = "courses"
 
 [[scenario]]
+id = "UC-T3-002"
+title = "Шкалу курса нельзя изменить, если по заданию со шкалой курса есть попытки; попытки по заданию со своей шкалой не мешают"
+layer = "integration"
+domain = "courses"
+
+[[scenario]]
 id = "UC-T4-001"
 title = "Добавленная группа сразу видит курс, убранная — перестаёт"
 layer = "integration"
@@ -458,6 +464,12 @@ id = "UC-S2-001"
 title = "Студент видит и открывает курсы своей группы; курс другой группы — 403"
 layer = "integration"
 domain = "courses"
+
+[[scenario]]
+id = "UC-S2-002"
+title = "Лента курса: задания и объявления новые первыми, фильтр по типу, постранично; студенту — свой статус и оценка, преподавателю — сводка; чужому — 403"
+layer = "integration"
+domain = "feed"
 
 # --- integration / materials ---
 
@@ -500,6 +512,12 @@ domain = "materials"
 # --- integration / profile ---
 
 [[scenario]]
+id = "UC-T5-007"
+title = "Отклонённый запрос на материал или файл удаляет из S3 загруженные файлы; уже прикреплённый файл и чужой ключ остаются"
+layer = "integration"
+domain = "materials"
+
+[[scenario]]
 id = "UC-C5-001"
 title = "Аватарка загружается в S3 и ставится; замена удаляет прежний файл, удаление — текущий"
 layer = "integration"
@@ -518,7 +536,135 @@ layer = "integration"
 domain = "profile"
 
 [[scenario]]
+id = "UC-C5-004"
+title = "Сбой замены аватарки удаляет из S3 новый файл, текущая остаётся; повторная отправка текущей аватарки её не стирает"
+layer = "integration"
+domain = "profile"
+
+[[scenario]]
 id = "PROFILE-001"
 title = "Профиль: ФИО и почта, группа у студента, кафедра у преподавателя"
 layer = "integration"
 domain = "profile"
+
+# --- integration / announcements ---
+
+[[scenario]]
+id = "UC-T6-001"
+title = "Преподаватель публикует, правит и удаляет объявление; пустое — 422, чужой курс — 404, студенту — 403, в архиве — 409"
+layer = "integration"
+domain = "announcements"
+
+# --- integration / assignments ---
+
+[[scenario]]
+id = "UC-T7-001"
+title = "Задание с файлами и дедлайном по МСК; шкала курса или своя; преподавателю — сводка, студенту — свой статус"
+layer = "integration"
+domain = "assignments"
+
+[[scenario]]
+id = "UC-T7-002"
+title = "Задание отклоняется: дедлайн без даты или дата без дедлайна, неверная шкала, чужой ключ файла, студент, архивный курс"
+layer = "integration"
+domain = "assignments"
+
+[[scenario]]
+id = "UC-T8-001"
+title = "Правка задания: шкала меняется без попыток и блокируется с ними, текст и дедлайн меняются, файлы прикрепляются и убираются из S3, updated_at двигается"
+layer = "integration"
+domain = "assignments"
+
+[[scenario]]
+id = "UC-T9-001"
+title = "Удаление задания убирает попытки и все файлы задания и попыток из S3"
+layer = "integration"
+domain = "assignments"
+
+[[scenario]]
+id = "UC-T9-002"
+title = "S3 недоступен при удалении задания или его файла — 503, всё остаётся"
+layer = "integration"
+domain = "assignments"
+
+[[scenario]]
+id = "UC-T10-001"
+title = "Таблица студентов по заданию: статус, текущая оценка, попытки, пометка «просрочено», фильтры по группе и статусу; студенту — 403"
+layer = "integration"
+domain = "assignments"
+
+# --- integration / submissions ---
+
+[[scenario]]
+id = "UC-T10-002"
+title = "Таблица студентов по заданию: постранично, фильтры по группе и статусу считаются в БД, статусы принято / на доработку / на проверке / не сдано, деактивированный студент исключён из таблицы и сводки"
+layer = "integration"
+domain = "assignments"
+
+[[scenario]]
+id = "UC-T7-003"
+title = "Отклонённое задание или файл задания удаляет из S3 загруженные файлы; прикреплённый файл остаётся"
+layer = "integration"
+domain = "assignments"
+
+[[scenario]]
+id = "UC-S4-001"
+title = "Студент отправляет попытку с файлами и комментарием; пустая, чужой ключ и преподаватель — отказ"
+layer = "integration"
+domain = "submissions"
+
+[[scenario]]
+id = "UC-S4-002"
+title = "Мягкий дедлайн прошёл — попытка просрочена; жёсткий прошёл без попыток — сдать и загрузить файл нельзя"
+layer = "integration"
+domain = "submissions"
+
+[[scenario]]
+id = "UC-S4-003"
+title = "После «принято» и в архивном курсе сдать нельзя, история попыток читается"
+layer = "integration"
+domain = "submissions"
+
+[[scenario]]
+id = "UC-S4-004"
+title = "Отклонённая попытка удаляет из S3 загруженные файлы"
+layer = "integration"
+domain = "submissions"
+
+[[scenario]]
+id = "UC-S5-001"
+title = "Жёсткий дедлайн: после срока можно пересдать только вернувшуюся на доработку работу, если первая попытка была до срока"
+layer = "integration"
+domain = "submissions"
+
+[[scenario]]
+id = "UC-S5-002"
+title = "Новая попытка, пока прежняя на проверке: в очереди только последняя, старую проверить нельзя — 409"
+layer = "integration"
+domain = "submissions"
+
+[[scenario]]
+id = "UC-S6-001"
+title = "Студент видит вердикты, оценки и комментарии в истории; текущая оценка — из последней проверки с оценкой"
+layer = "integration"
+domain = "submissions"
+
+# --- integration / reviews ---
+
+[[scenario]]
+id = "UC-T11-001"
+title = "Проверка: «принято» без оценки и оценка не по шкале — 422, повторная проверка — 409, экран проверки с попытками и шкалой, студенту — 403"
+layer = "integration"
+domain = "reviews"
+
+[[scenario]]
+id = "UC-T12-001"
+title = "Исправление оценки и комментария без смены вердикта; непроверенную — 409, «принято» без оценки — 422, в архиве — 409"
+layer = "integration"
+domain = "reviews"
+
+[[scenario]]
+id = "UC-T13-001"
+title = "Очередь: старые первыми, фильтры по курсу и заданию, без проверенных, архивных курсов и студентов убранных групп, только свои курсы; счётчики на плитках; студенту — 403"
+layer = "integration"
+domain = "reviews"

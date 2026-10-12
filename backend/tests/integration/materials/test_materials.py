@@ -3,14 +3,14 @@ from urllib.parse import unquote
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.db.models import Course
+from src.core.db.models import Course, CourseMaterialFile
 from src.core.s3.service import S3Storage
 from tests.support.auth import create_group, error_code
 from tests.support.courses import create_course, create_student, create_teacher, sign_in
-from tests.support.files import download, s3_unavailable, upload_to_s3
+from tests.support.files import download, is_in_s3, s3_unavailable, upload_to_s3
 
 
 async def upload_file(
@@ -239,3 +239,36 @@ async def test_material_is_edited(client: AsyncClient, db: AsyncSession) -> None
     kept = next(item for item in listing["items"] if item["id"] == material["id"])
     assert [file["file_name"] for file in kept["files"]] == ["Новый.pdf"]
     assert changed_at(kept) > changed_at(added.json())
+
+
+@pytest.mark.case(id="UC-T5-007")
+async def test_rejected_material_discards_uploaded_files(
+    client: AsyncClient, db: AsyncSession
+) -> None:
+    group = await create_group(db, name="БВТ2601", code="CODE-1")
+    await create_teacher(db, "teacher@example.com", "password-1", [group])
+    await sign_in(client, "teacher@example.com", "password-1")
+    course = await create_course(client, [group.id])
+    other = await create_course(client, [group.id], name="Другой курс")
+    materials = f"/api/courses/{course['id']}/materials"
+    await create_material(client, course["id"], b"kept")
+    attached = await db.scalar(select(CourseMaterialFile.file_key))
+    assert attached is not None
+    foreign = await upload_file(client, other["id"], b"foreign")
+    fresh = await upload_file(client, course["id"], b"fresh")
+    for_archive = await upload_file(client, course["id"], b"for-archive")
+
+    duplicate = await client.post(
+        materials, json={"title": "М", "files": [{"key": attached, "file_name": "a"}, fresh]}
+    )
+    foreign_rejected = await client.post(materials, json={"title": "М", "files": [foreign]})
+    await db.execute(update(Course).where(Course.id == course["id"]).values(is_archived=True))
+    await db.commit()
+    archived = await client.post(materials, json={"title": "М", "files": [for_archive]})
+
+    assert (duplicate.status_code, foreign_rejected.status_code) == (409, 422)
+    assert archived.status_code == 409
+    assert await is_in_s3(attached)
+    assert await is_in_s3(foreign["key"])
+    assert not await is_in_s3(fresh["key"])
+    assert not await is_in_s3(for_archive["key"])

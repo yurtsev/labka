@@ -7,7 +7,7 @@ from src.core.db.models import Department, User
 from src.core.s3.service import S3Storage
 from tests.support.auth import create_group, error_code
 from tests.support.courses import create_student, create_teacher, sign_in
-from tests.support.files import download, s3_unavailable, upload_to_s3
+from tests.support.files import download, is_in_s3, s3_unavailable, upload_to_s3
 
 
 async def upload_avatar(
@@ -122,3 +122,24 @@ async def test_avatar_survives_s3_failure(
     assert (removed.status_code, error_code(removed)) == (503, "s3.unavailable")
     profile = (await client.get("/api/profile")).json()
     assert (await download(profile["avatar_url"])).content == b"first-png"
+
+
+@pytest.mark.case(id="UC-C5-004")
+async def test_failed_avatar_replacement_discards_new_file(
+    client: AsyncClient, db: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    group = await create_group(db, name="БВТ2601", code="CODE-1")
+    await create_student(client, db, group, "CODE-1", "student@example.com")
+    current_key = await upload_avatar(client, b"current-png")
+    assert (await client.put("/api/profile/avatar", json={"key": current_key})).status_code == 200
+    replaced_key = await upload_avatar(client, b"replaced-png")
+
+    repeated = await client.put("/api/profile/avatar", json={"key": current_key})
+    with monkeypatch.context() as patch:
+        patch.setattr(S3Storage, "delete", s3_unavailable)
+        unavailable = await client.put("/api/profile/avatar", json={"key": replaced_key})
+
+    assert repeated.status_code == 200
+    assert unavailable.status_code == 503
+    assert await is_in_s3(current_key)
+    assert not await is_in_s3(replaced_key)

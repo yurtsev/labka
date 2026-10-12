@@ -26,7 +26,15 @@ async def test_course_list_is_paginated(client: AsyncClient, db: AsyncSession) -
         (4, 2, 5, 3),
     ]
     assert pages[3]["items"] == []
-    assert set(pages[0]["items"][0]) == {"id", "name", "teacher", "is_archived", "groups"}
+    assert set(pages[0]["items"][0]) == {
+        "id",
+        "name",
+        "teacher",
+        "is_archived",
+        "groups",
+        "pending_reviews",
+    }
+    assert pages[0]["items"][0]["pending_reviews"] == 0
     empty = (await client.get("/api/courses", params={"archived": True})).json()
     assert (empty["items"], empty["total"], empty["pages"]) == ([], 0, 1)
     for params in ({"per_page": 0}, {"per_page": 101}, {"page": 0}):
