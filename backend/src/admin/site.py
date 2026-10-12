@@ -8,8 +8,9 @@ from sqladmin.i18n import I18nConfig
 
 from src.admin.auth.backend import AdminAuthBackend
 from src.admin.error_reporter import AdminErrorReporter
-from src.admin.groups.view import GroupInviteView, GroupView
+from src.admin.groups.view import BatchGroupsView, GroupInviteView, GroupView, InviteImportView
 from src.admin.structure.view import DepartmentView, DirectionView, FacultyView
+from src.admin.students.view import StudentView, TransferStudentsView
 from src.admin.teachers.view import TeacherView
 from src.core.db.db import Session
 
@@ -38,6 +39,10 @@ class AdminSite:
             DirectionView,
             GroupView,
             GroupInviteView,
+            BatchGroupsView,
+            InviteImportView,
+            StudentView,
+            TransferStudentsView,
             TeacherView,
         ):
             admin.add_view(view)

@@ -1,3 +1,4 @@
+from collections.abc import Collection
 from datetime import datetime
 from uuid import UUID
 
@@ -14,6 +15,17 @@ class SessionRepository(BaseRepository[Session]):
         """Сессия с блокировкой строки: параллельные refresh одной сессии идут по очереди."""
         query = select(Session).where(Session.id == session_id).with_for_update()
         return await self._session.scalar(query)
+
+    async def revoke_all_for_users(self, user_ids: Collection[UUID], now: datetime) -> None:
+        """Завершает все действующие сессии пользователей."""
+        if not user_ids:
+            return
+        query = (
+            update(Session)
+            .where(Session.user_id.in_(user_ids), Session.revoked_at.is_(None))
+            .values(revoked_at=now)
+        )
+        await self._session.execute(query)
 
     async def revoke_all_for_user(
         self, user_id: UUID, now: datetime, except_session_id: UUID | None = None

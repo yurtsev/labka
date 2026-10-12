@@ -2,7 +2,7 @@ from collections.abc import Collection
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import selectinload
 
 from src.core.db.enums import UserRole
@@ -63,6 +63,31 @@ class UserRepository(BaseRepository[User]):
             .options(selectinload(User.group))
         )
         return await self._session.scalar(query)
+
+    async def list_by_role(self, role: UserRole, user_ids: Collection[UUID]) -> list[User]:
+        """Пользователи с этой ролью из списка, по алфавиту."""
+        if not user_ids:
+            return []
+        query = (
+            select(User)
+            .where(User.id.in_(user_ids), User.role == role)
+            .order_by(User.last_name, User.first_name, User.id)
+        )
+        return list(await self._session.scalars(query))
+
+    async def deactivate_students_of_groups(self, group_ids: Collection[UUID]) -> list[UUID]:
+        """Деактивирует активных студентов групп; возвращает их id."""
+        query = (
+            update(User)
+            .where(
+                User.group_id.in_(group_ids),
+                User.role == UserRole.STUDENT,
+                User.is_active.is_(True),
+            )
+            .values(is_active=False)
+            .returning(User.id)
+        )
+        return list((await self._session.scalars(query)).all())
 
     async def course_student_ids(self, course_id: UUID) -> list[UUID]:
         """Активные студенты групп курса."""
