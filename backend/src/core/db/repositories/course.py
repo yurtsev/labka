@@ -1,9 +1,14 @@
+from math import ceil
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, literal, select, union_all
 from sqlalchemy.orm import selectinload
 
+from src.core.db.dto.feed import FeedEntryKind, FeedEntryRef
 from src.core.db.dto.page import Page, PageRequest
+from src.core.db.enums import AssignmentType
+from src.core.db.models.announcement import Announcement
+from src.core.db.models.assignment import Assignment
 from src.core.db.models.course import Course
 from src.core.db.models.course_group import CourseGroup
 from src.core.db.repositories.base import BaseRepository
@@ -47,3 +52,40 @@ class CourseRepository(BaseRepository[Course]):
             CourseGroup.course_id == course_id, CourseGroup.group_id == group_id
         )
         return await self._session.scalar(query) is not None
+
+    async def feed_page(
+        self, course_id: UUID, assignment_type: AssignmentType | None, page: PageRequest
+    ) -> Page[FeedEntryRef]:
+        """Лента курса: задания и объявления вперемешку, новые первыми.
+
+        С фильтром по типу задания в ленте только задания этого типа.
+        """
+        assignments = select(
+            literal(FeedEntryKind.ASSIGNMENT.value).label("kind"),
+            Assignment.id.label("id"),
+            Assignment.created_at.label("created_at"),
+        ).where(Assignment.course_id == course_id)
+        if assignment_type is not None:
+            entries = assignments.where(Assignment.type == assignment_type).subquery()
+        else:
+            announcements = select(
+                literal(FeedEntryKind.ANNOUNCEMENT.value).label("kind"),
+                Announcement.id.label("id"),
+                Announcement.created_at.label("created_at"),
+            ).where(Announcement.course_id == course_id)
+            entries = union_all(assignments, announcements).subquery()
+
+        total = await self._session.scalar(select(func.count()).select_from(entries)) or 0
+        rows = await self._session.execute(
+            select(entries.c.kind, entries.c.id)
+            .order_by(entries.c.created_at.desc(), entries.c.id.desc())
+            .offset((page.page - 1) * page.per_page)
+            .limit(page.per_page)
+        )
+        return Page(
+            items=tuple(FeedEntryRef(kind=FeedEntryKind(kind), id=id) for kind, id in rows),
+            page=page.page,
+            per_page=page.per_page,
+            total=total,
+            pages=max(1, ceil(total / page.per_page)),
+        )

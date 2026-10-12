@@ -2,10 +2,12 @@ from datetime import datetime
 from uuid import UUID, uuid7
 
 from sqlalchemy import CheckConstraint, ForeignKey, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.db.enums import AssignmentType, DeadlineType, ScaleType
+from src.core.db.models.assignment_file import AssignmentFile
 from src.core.db.models.base import Base
+from src.core.db.models.course import Course
 
 
 class Assignment(Base):
@@ -38,3 +40,12 @@ class Assignment(Base):
     grading_note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+    course: Mapped[Course] = relationship(lazy="raise")
+    # Файлы и попытки удаляет каскад в БД: ORM не грузит их ради удаления задания.
+    files: Mapped[list[AssignmentFile]] = relationship(
+        order_by=AssignmentFile.id,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="raise",
+    )

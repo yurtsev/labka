@@ -1,5 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.db.repositories.announcement import AnnouncementRepository
+from src.core.db.repositories.assignment import AssignmentRepository
+from src.core.db.repositories.assignment_file import AssignmentFileRepository
 from src.core.db.repositories.course import CourseRepository
 from src.core.db.repositories.course_material import CourseMaterialRepository
 from src.core.db.repositories.course_material_file import CourseMaterialFileRepository
@@ -8,7 +11,10 @@ from src.core.db.repositories.direction import DirectionRepository
 from src.core.db.repositories.faculty import FacultyRepository
 from src.core.db.repositories.group import GroupRepository
 from src.core.db.repositories.group_invite import GroupInviteRepository
+from src.core.db.repositories.review import ReviewRepository
 from src.core.db.repositories.session import SessionRepository
+from src.core.db.repositories.submission import SubmissionRepository
+from src.core.db.repositories.submission_file import SubmissionFileRepository
 from src.core.db.repositories.user import UserRepository
 
 
@@ -25,6 +31,12 @@ class UnitOfWork:
         self.courses = CourseRepository(self.session)
         self.course_materials = CourseMaterialRepository(self.session)
         self.course_material_files = CourseMaterialFileRepository(self.session)
+        self.announcements = AnnouncementRepository(self.session)
+        self.assignments = AssignmentRepository(self.session)
+        self.assignment_files = AssignmentFileRepository(self.session)
+        self.submissions = SubmissionRepository(self.session)
+        self.submission_files = SubmissionFileRepository(self.session)
+        self.reviews = ReviewRepository(self.session)
 
     async def flush(self) -> None:
         await self.session.flush()

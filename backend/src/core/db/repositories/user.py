@@ -1,9 +1,12 @@
+from collections.abc import Collection
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
+from src.core.db.enums import UserRole
+from src.core.db.models.course_group import CourseGroup
 from src.core.db.models.session import Session
 from src.core.db.models.user import User
 from src.core.db.repositories.base import BaseRepository
@@ -11,6 +14,10 @@ from src.core.db.repositories.base import BaseRepository
 
 class UserRepository(BaseRepository[User]):
     model = User
+
+    async def attached_avatar_keys(self, keys: Collection[str]) -> set[str]:
+        """Какие из ключей уже стоят аватаркой у пользователя."""
+        return await self._present(User.avatar_key, keys)
 
     async def get_by_email(self, email: str) -> User | None:
         return await self._session.scalar(select(User).where(User.email == email))
@@ -41,3 +48,17 @@ class UserRepository(BaseRepository[User]):
             .options(selectinload(User.group), selectinload(User.department))
         )
         return await self._session.scalar(query)
+
+    async def count_course_students(self, course_id: UUID) -> int:
+        """Сколько активных студентов в группах курса."""
+        query = (
+            select(func.count())
+            .select_from(User)
+            .join(CourseGroup, CourseGroup.group_id == User.group_id)
+            .where(
+                CourseGroup.course_id == course_id,
+                User.role == UserRole.STUDENT,
+                User.is_active.is_(True),
+            )
+        )
+        return await self._session.scalar(query) or 0
