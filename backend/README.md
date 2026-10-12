@@ -1,74 +1,44 @@
-# Labka
+# Labka — backend
 
-Готовый шаблон backend-приложения на FastAPI: DI на dishka, SQLAlchemy + Alembic,
-структурные логи, метрики Prometheus и полный docker-compose стек с мониторингом
-(Prometheus, Loki, Promtail, cAdvisor, Grafana).
+FastAPI-сервис Labka. Общее описание проекта, требования и запуск целиком — в
+[корневом README](../README.md); здесь — то, что нужно при работе с кодом backend.
 
-## Стек
-
-- **FastAPI** + **uvicorn**
-- **dishka** — dependency injection
-- **SQLAlchemy** (async) + **asyncpg** + **Alembic** — БД и миграции
-- **pydantic-settings** — конфиг из `config.toml` / `.env` / переменных окружения
-- **prometheus-client** — метрики приложения (`/metrics`)
-- **Prometheus + Grafana + Loki + Promtail + cAdvisor** — мониторинг и логи в docker-compose
-- **ruff** + **mypy** — линт и типизация
-
-## Быстрый старт
-
-```bash
-cp .env.example .env
-cp config.toml.example config.toml
-make up
-```
-
-Приложение поднимется на `http://localhost:8000`, Grafana — на `http://localhost:3000`
-(логин/пароль из `GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD` в `.env`).
-
-Локально без docker (нужен поднятый Postgres):
-
-```bash
-make upgrade   # применить миграции
-make run       # запустить приложение
-```
-
-## Команды Makefile
+## Команды
 
 ```
 make help
 ```
 
-- `up` / `down` / `build` / `logs` / `ps` — управление docker-compose стеком
+- `up` / `down` / `build` / `logs` / `ps` — docker-compose стек (Postgres, MinIO, backend, мониторинг)
 - `upgrade` / `downgrade REV=<rev>` / `migrate MSG=<msg>` — миграции Alembic
-- `format` / `lint` / `lint-fix` / `typecheck` / `check` — качество кода
-- `run` — запуск приложения локально
+- `check` / `lint-fix` / `format` / `lint` / `typecheck` — качество кода
+- `test` / `test-integration` / `test-all` — тесты (интеграционным нужен Docker)
+- `run` — запуск без Docker, `create-admin` / `create-admin-docker` — создание администратора
 
-## Структура
+## Структура `src/`
 
 ```
-src/
-  api/            корневой роутер и исключения API
-  config/         конфигурация (pydantic-settings)
-  core/
-    db/           модели, DTO, репозитории, unit of work
-    di/           провайдеры dishka
-    metrics.py    Prometheus-мидлварь
-    middleware.py логирующая мидлварь (request id, статус, длительность)
-    logging.py    настройка структурных логов
-  main.py         сборка FastAPI-приложения
-deploy/           конфиги prometheus/promtail/grafana для docker-compose
-alembic/          миграции
+main.py         сборка приложения: контейнер зависимостей, middleware, роутеры, запуск слушателя и планировщика
+config/         настройки (pydantic-settings), доступ через `from src.config import cfg`
+admin/          sqladmin на /admin: структура вуза, группы, почты, преподаватели, студенты
+api/<домен>/    router / schemas / service (+ presenter, parser, dto, utils)
+api/exc/        ошибки доменов и единый обработчик ошибок
+core/db/        модели, репозитории, unit of work
+core/<система>/ общая подсистема: access, grading, schedule, notifications, realtime, scheduler, s3, security
+core/di/        провайдеры dishka
 ```
+
+Слои: router → service → unit of work / репозитории → модели. Зависимости идут только вниз: API-домены
+не импортируют друг друга, `core` не импортирует `api` (кроме провайдеров в `core/di`).
 
 ## Конфигурация
 
-Настройки читаются из `config.toml` (см. `config.toml.example`) и переопределяются
-переменными окружения с разделителем `__`, например `DATABASE__POSTGRES_HOST`.
-Секреты для docker-compose (пароли Postgres и Grafana) — в `.env` (см. `.env.example`).
+`config.toml` (пример — `config.toml.example`) и переменные окружения с разделителем `__`.
+Секции: `database`, `s3`, `pagination`, `logging`, `cors`, `auth`, `schedule` (окна пар и границы
+семестров), `notifications`, `dashboard`, `administration`.
 
-## Использование как шаблона
+## Уведомления и фоновые задачи
 
-Это GitHub template repository — можно создать новый репозиторий кнопкой
-**Use this template** вместо `git clone`. При первом пуше в новом репозитории
-автоматически отработает workflow, который подставит имя проекта вместо плейсхолдеров
-(`Labka`, `labka`, `labka`) и удалит сам себя.
+Триггеры БД отправляют `NOTIFY` после коммита, слушатель PostgreSQL передаёт события в открытые
+WebSocket-соединения; APScheduler раз в 5 минут создаёт напоминания о дедлайнах. Оба живут в
+процессе приложения, поэтому uvicorn запускается с одним воркером.
