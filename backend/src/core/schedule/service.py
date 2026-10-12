@@ -4,6 +4,8 @@ from datetime import date, time, timedelta
 
 from src.config import cfg
 from src.core.db.enums import ScheduleRepeat, SemesterTerm
+from src.core.db.models.extra_lesson import ExtraLesson
+from src.core.db.models.schedule_rule import ScheduleRule
 from src.core.schedule.dto import (
     ExtraLessonSpec,
     LessonRule,
@@ -181,6 +183,36 @@ class ScheduleService:
             if first <= extra.day <= last
         )
         return sorted(found, key=lambda item: (item.day, item.starts_at, str(item.source_id)))
+
+    @staticmethod
+    def to_rule(rule: ScheduleRule) -> LessonRule:
+        """Правило из БД; курс правила должен быть загружен: из него берётся семестр."""
+        return LessonRule(
+            id=rule.id,
+            course_id=rule.course_id,
+            group_id=rule.group_id,
+            semester=ScheduleService.semester(rule.course.term, rule.course.year),
+            lesson_type=rule.lesson_type,
+            weekday=rule.weekday,
+            starts_at=rule.starts_at,
+            ends_at=rule.ends_at,
+            repeat=rule.repeat,
+            room=rule.room,
+        )
+
+    @staticmethod
+    def to_extra(extra: ExtraLesson) -> ExtraLessonSpec:
+        """Разовое занятие из БД."""
+        return ExtraLessonSpec(
+            id=extra.id,
+            course_id=extra.course_id,
+            group_id=extra.group_id,
+            lesson_type=extra.lesson_type,
+            day=extra.day,
+            starts_at=extra.starts_at,
+            ends_at=extra.ends_at,
+            room=extra.room,
+        )
 
     @staticmethod
     def applies(rule: LessonRule, day: date) -> bool:

@@ -10,7 +10,6 @@ from src.core.db.models.personal_task import PersonalTask
 from src.core.db.models.schedule_rule import ScheduleRule
 from src.core.db.uow import UnitOfWork
 from src.core.grading.service import GradingService
-from src.core.schedule.dto import ExtraLessonSpec, LessonRule
 from src.core.schedule.enums import CalendarView
 from src.core.schedule.service import ScheduleService
 from src.core.security.dto import CurrentUser
@@ -66,8 +65,8 @@ class CalendarService:
                 for assignment in assignments
             }
         occurrences = ScheduleService.occurrences(
-            [self._rule(rule) for rule in rules],
-            [self._extra(extra) for extra in extras],
+            [ScheduleService.to_rule(rule) for rule in rules],
+            [ScheduleService.to_extra(extra) for extra in extras],
             first,
             last,
         )
@@ -80,32 +79,4 @@ class CalendarService:
             items=CalendarPresenter.items(
                 occurrences, courses, groups, exams, assignments, statuses, tasks
             ),
-        )
-
-    @staticmethod
-    def _rule(rule: ScheduleRule) -> LessonRule:
-        return LessonRule(
-            id=rule.id,
-            course_id=rule.course_id,
-            group_id=rule.group_id,
-            semester=ScheduleService.semester(rule.course.term, rule.course.year),
-            lesson_type=rule.lesson_type,
-            weekday=rule.weekday,
-            starts_at=rule.starts_at,
-            ends_at=rule.ends_at,
-            repeat=rule.repeat,
-            room=rule.room,
-        )
-
-    @staticmethod
-    def _extra(extra: ExtraLesson) -> ExtraLessonSpec:
-        return ExtraLessonSpec(
-            id=extra.id,
-            course_id=extra.course_id,
-            group_id=extra.group_id,
-            lesson_type=extra.lesson_type,
-            day=extra.day,
-            starts_at=extra.starts_at,
-            ends_at=extra.ends_at,
-            room=extra.room,
         )
