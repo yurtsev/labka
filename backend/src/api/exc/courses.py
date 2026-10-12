@@ -34,3 +34,8 @@ class GroupAlreadyInCourseError(ConflictError):
 class GroupNotInCourseError(NotFoundError):
     code = "courses.group_not_in_course"
     message = "Этой группы нет в курсе"
+
+
+class ScaleLockedError(ConflictError):
+    code = "courses.scale_locked"
+    message = "Шкалу курса нельзя изменить: по заданиям со шкалой курса уже есть попытки"

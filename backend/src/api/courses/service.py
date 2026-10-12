@@ -16,6 +16,7 @@ from src.api.exc.courses import (
     GroupAlreadyInCourseError,
     GroupNotAvailableError,
     GroupNotInCourseError,
+    ScaleLockedError,
     TeacherOnlyError,
 )
 from src.core.access import exc as access_exc
@@ -39,15 +40,23 @@ class CourseService:
     async def list_courses(
         self, user: CurrentUser, archived: bool, page: PageRequest
     ) -> Page[CoursePreview]:
-        """Плитки курсов преподавателя или группы студента, новые первыми; архив — отдельно."""
+        """Плитки курсов преподавателя или группы студента, новые первыми; архив — отдельно.
+
+        У преподавателя на плитке — сколько попыток ждут проверки.
+        """
         if user.role == UserRole.TEACHER:
             courses = await self._uow.courses.page_for_teacher(user.user_id, archived, page)
-        else:
-            student = await self._uow.users.get_by_id(user.user_id)
-            if student is None or student.group_id is None:
-                return Page(items=(), page=page.page, per_page=page.per_page, total=0, pages=1)
-            courses = await self._uow.courses.page_for_group(student.group_id, archived, page)
-        return courses.map(tuple(self._preview(course) for course in courses.items))
+            pending = await self._uow.submissions.count_pending_by_course(
+                [course.id for course in courses.items]
+            )
+            return courses.map(
+                tuple(self._preview(course, pending.get(course.id, 0)) for course in courses.items)
+            )
+        student = await self._uow.users.get_by_id(user.user_id)
+        if student is None or student.group_id is None:
+            return Page(items=(), page=page.page, per_page=page.per_page, total=0, pages=1)
+        courses = await self._uow.courses.page_for_group(student.group_id, archived, page)
+        return courses.map(tuple(self._preview(course, None) for course in courses.items))
 
     async def get_course(self, user: CurrentUser, course_id: UUID) -> CourseDetails:
         """Курс, который пользователь может смотреть; архивный тоже.
@@ -96,8 +105,16 @@ class CourseService:
             CourseNotFoundError: курса нет.
             CourseForbiddenError: курс чужой или пользователь не преподаватель.
             CourseArchivedError: курс в архиве.
+            ScaleLockedError: шкала меняется, а по заданиям со шкалой курса уже есть попытки.
         """
         course = await self._editable(user, course_id)
+        scale = fields.scale
+        if (scale.type, scale.min, scale.max) != (
+            course.scale_type,
+            course.scale_min,
+            course.scale_max,
+        ) and await self._uow.assignments.inherits_scale_with_submissions(course.id):
+            raise ScaleLockedError({"course_id": str(course.id)})
         self._apply_fields(course, fields)
         await self._uow.commit()
         return await self._reload(course.id)
@@ -214,13 +231,14 @@ class CourseService:
         course.grading_note = fields.grading_note
 
     @staticmethod
-    def _preview(course: Course) -> CoursePreview:
+    def _preview(course: Course, pending_reviews: int | None) -> CoursePreview:
         return CoursePreview(
             id=course.id,
             name=course.name,
             teacher=CourseService._teacher(course),
             is_archived=course.is_archived,
             groups=CourseService._groups(course),
+            pending_reviews=pending_reviews,
         )
 
     @staticmethod

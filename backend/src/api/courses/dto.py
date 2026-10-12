@@ -56,3 +56,5 @@ class CoursePreview:
     teacher: TeacherRef
     is_archived: bool
     groups: tuple[GroupRef, ...]
+    # Сколько попыток ждут проверки; только у преподавателя, у студента — `None`.
+    pending_reviews: int | None

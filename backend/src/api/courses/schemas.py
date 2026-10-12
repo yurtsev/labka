@@ -83,6 +83,7 @@ class CoursePreviewResponse(BaseModel):
     teacher: TeacherResponse
     is_archived: bool
     groups: list[GroupResponse]
+    pending_reviews: int | None
 
 
 type GroupNameQuery = Annotated[str | None, Query(max_length=64)]
