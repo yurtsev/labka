@@ -101,6 +101,50 @@ title = "Сетка пар: пять окон из конфига; номер п
 layer = "unit"
 domain = "schedule"
 
+# --- unit / notifications и realtime ---
+
+[[scenario]]
+id = "NOTIF-RENDER-001"
+title = "Заголовок, текст и раздел перехода для каждого типа уведомления; дата в МСК по-русски"
+layer = "unit"
+domain = "notifications"
+
+[[scenario]]
+id = "NOTIF-RENDER-002"
+title = "В переходе есть идентификаторы объектов: задание, попытка, студент, день экзамена"
+layer = "unit"
+domain = "notifications"
+
+[[scenario]]
+id = "NOTIF-RENDER-003"
+title = "Слепок без обязательного поля — внутренняя ошибка, а не пустой текст"
+layer = "unit"
+domain = "notifications"
+
+[[scenario]]
+id = "REALTIME-HUB-001"
+title = "Сообщение уходит во все соединения пользователя и только ему"
+layer = "unit"
+domain = "realtime"
+
+[[scenario]]
+id = "REALTIME-HUB-002"
+title = "Закрытые и оборванные соединения убираются из реестра"
+layer = "unit"
+domain = "realtime"
+
+[[scenario]]
+id = "REALTIME-HUB-003"
+title = "Закрытие сессии закрывает только её соединения; остановка закрывает все"
+layer = "unit"
+domain = "realtime"
+
+[[scenario]]
+id = "REALTIME-HUB-004"
+title = "Рассылка доходит до всех открытых соединений"
+layer = "unit"
+domain = "realtime"
+
 # --- unit / security ---
 
 [[scenario]]
@@ -842,3 +886,67 @@ id = "UC-S8-001"
 title = "Студент видит свой итоговый результат и форму контроля; пока не выставлен — пусто; преподаватель и чужая группа — отказ"
 layer = "integration"
 domain = "final_grades"
+
+# --- integration / notifications ---
+
+[[scenario]]
+id = "UC-C7-001"
+title = "Список уведомлений постранично, новые первыми; фильтр непрочитанных, счётчик, отметка одного и всех прочитанными"
+layer = "integration"
+domain = "notifications"
+
+[[scenario]]
+id = "UC-C7-002"
+title = "Уведомления личные: чужое или несуществующее — 404, без входа — 401"
+layer = "integration"
+domain = "notifications"
+
+[[scenario]]
+id = "UC-C6-001"
+title = "Студенты получают уведомления о событиях курса, преподаватель — о новой попытке; серии правок не плодят дубли; посторонние группы ничего не получают"
+layer = "integration"
+domain = "notifications"
+
+[[scenario]]
+id = "UC-C6-002"
+title = "Перенос расписания и отмена экзамена уведомляют и прежнюю группу, и новую"
+layer = "integration"
+domain = "notifications"
+
+[[scenario]]
+id = "UC-C6-003"
+title = "Неактивным студентам и по архивным курсам уведомления не создаются"
+layer = "integration"
+domain = "notifications"
+
+[[scenario]]
+id = "UC-SYS1-001"
+title = "Напоминание о дедлайне за сутки: только тем, кто не сдавал, один раз; без срока, прошедшие, дальние и архивные курсы пропускаются"
+layer = "integration"
+domain = "notifications"
+
+# --- integration / realtime ---
+
+[[scenario]]
+id = "UC-C6-004"
+title = "Новое уведомление приходит по WebSocket адресату во все его вкладки со свежим счётчиком; чужие и посторонние ничего не получают; серия правок обновляет прежнее уведомление"
+layer = "integration"
+domain = "realtime"
+
+[[scenario]]
+id = "UC-C6-005"
+title = "WebSocket закрывается с 4401 без входа и с 4403 при запросе с чужого сайта; свой сайт и клиент без Origin принимаются"
+layer = "integration"
+domain = "realtime"
+
+[[scenario]]
+id = "UC-C6-006"
+title = "Отзыв сессии (смена пароля, выход) закрывает её WebSocket с 4401, не трогая сессию, где пароль менялся"
+layer = "integration"
+domain = "realtime"
+
+[[scenario]]
+id = "UC-C6-007"
+title = "Сервер шлёт ping; после потери соединения слушателя с БД клиенты получают resync, а новые уведомления снова доходят"
+layer = "integration"
+domain = "realtime"

@@ -42,3 +42,16 @@ async def clean_database(app: FastAPI) -> AsyncIterator[None]:
     tables = ", ".join(f'"{table.name}"' for table in Base.metadata.sorted_tables)
     async with engine.begin() as connection:
         await connection.execute(text(f"TRUNCATE {tables} CASCADE"))
+
+
+@pytest.fixture
+async def realtime(app: FastAPI) -> AsyncIterator[None]:
+    """Слушатель PostgreSQL запущен: WebSocket получает уведомления, как в работающем сервисе."""
+    from src.core.realtime.listener import PostgresListener
+    from src.main import container
+
+    listener = await container.get(PostgresListener)
+    listener.start()
+    await listener.wait_ready()
+    yield
+    await listener.stop()
