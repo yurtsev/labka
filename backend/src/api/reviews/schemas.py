@@ -52,6 +52,7 @@ class QueueItemResponse(BaseModel):
     is_late: bool
     student: PersonResponse
     group: NamedResponse
+    in_course: bool
     course: NamedResponse
     assignment: AssignmentRefResponse
 

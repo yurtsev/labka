@@ -256,6 +256,7 @@ class ReviewService:
         if student.group is None:
             raise InternalError({"student_id": str(student.id)})
         assignment = submission.assignment
+        course_group_ids = {group.id for group in assignment.course.groups}
         return QueueItem(
             submission_id=submission.id,
             number=submission.number,
@@ -268,6 +269,7 @@ class ReviewService:
                 middle_name=student.middle_name,
             ),
             group=NamedRef(id=student.group.id, name=student.group.name),
+            in_course=student.group.id in course_group_ids,
             course=NamedRef(id=assignment.course.id, name=assignment.course.name),
             assignment=AssignmentRef(
                 id=assignment.id, type=assignment.type, title=assignment.title

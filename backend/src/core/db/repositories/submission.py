@@ -180,7 +180,9 @@ class SubmissionRepository(BaseRepository[Submission]):
             query = query.where(Assignment.id == search.assignment_id)
         query = query.options(
             selectinload(Submission.student).selectinload(User.group),
-            selectinload(Submission.assignment).selectinload(Assignment.course),
+            selectinload(Submission.assignment)
+            .selectinload(Assignment.course)
+            .selectinload(Course.groups),
         )
         return await self._page(query, page, Submission.created_at, Submission.id)
 
@@ -297,18 +299,14 @@ class SubmissionRepository(BaseRepository[Submission]):
 
     @staticmethod
     def _pending() -> Select[tuple[Submission]]:
-        """Ждут проверки: последняя попытка студента без проверки, студент активен и сейчас
-        в группе курса, курс не в архиве."""
+        """Ждут проверки: последняя попытка студента без проверки, студент активен, курс не
+        в архиве. Попытка остаётся, даже если студента перевели или его группу убрали из курса."""
         newer = aliased(Submission)
         return (
             select(Submission)
             .join(Assignment, Assignment.id == Submission.assignment_id)
             .join(Course, Course.id == Assignment.course_id)
             .join(User, User.id == Submission.student_id)
-            .join(
-                CourseGroup,
-                and_(CourseGroup.course_id == Course.id, CourseGroup.group_id == User.group_id),
-            )
             .where(
                 Course.is_archived.is_(False),
                 User.is_active.is_(True),

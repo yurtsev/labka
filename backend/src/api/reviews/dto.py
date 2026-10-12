@@ -46,7 +46,10 @@ class AssignmentRef:
 
 @dataclass(frozen=True)
 class QueueItem:
-    """Попытка, которая ждёт проверки."""
+    """Попытка, которая ждёт проверки.
+
+    `in_course` ложно, если студента перевели в группу не из курса или его группу убрали.
+    """
 
     submission_id: UUID
     number: int
@@ -54,6 +57,7 @@ class QueueItem:
     is_late: bool
     student: PersonRef
     group: NamedRef
+    in_course: bool
     course: NamedRef
     assignment: AssignmentRef
 

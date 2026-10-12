@@ -141,6 +141,7 @@ async def test_review_queue(client: AsyncClient, db: AsyncSession) -> None:
         "Алгоритмы",
     )
     assert (item["assignment"]["title"], item["number"], item["is_late"]) == ("Первое", 1, False)
+    assert item["in_course"] is True
     assert [i["submission_id"] for i in by_course["items"]] == [second_attempt["id"]]
     assert [i["submission_id"] for i in by_assignment["items"]] == [first_attempt["id"]]
 
@@ -154,7 +155,12 @@ async def test_review_queue(client: AsyncClient, db: AsyncSession) -> None:
 
     removed = await client.delete(f"/api/courses/{course['id']}/groups/{course['groups'][0]['id']}")
     assert removed.status_code == 200, removed.text
-    assert (await client.get("/api/reviews/queue")).json()["items"] == []
+    after_removal = (await client.get("/api/reviews/queue")).json()["items"]
+    assert [(i["submission_id"], i["in_course"]) for i in after_removal] == [
+        (first_attempt["id"], False)
+    ]
+    home = (await client.get("/api/home")).json()
+    assert home["pending_reviews"] == 1
 
     await sign_in(client, "stranger@example.com", "password-1")
     assert (await client.get("/api/reviews/queue")).json()["items"] == []
