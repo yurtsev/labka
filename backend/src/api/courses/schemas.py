@@ -4,7 +4,8 @@ from uuid import UUID
 from fastapi import Query
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-from src.core.db.enums import ScaleType
+from src.api.schemas import SemesterResponse
+from src.core.db.enums import ScaleType, SemesterTerm
 
 type CourseName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 type OptionalText = Annotated[str, StringConstraints(strip_whitespace=True)] | None
@@ -42,6 +43,15 @@ class CourseUpdateRequest(BaseModel):
 
 class CourseCreateRequest(CourseUpdateRequest):
     group_ids: list[UUID] = Field(min_length=1)
+    # Семестр задаётся при создании и дальше не меняется; без него — текущий по дате.
+    term: SemesterTerm | None = None
+    year: int | None = Field(default=None, ge=2000, le=2100)
+
+    @model_validator(mode="after")
+    def check_semester(self) -> Self:
+        if (self.term is None) != (self.year is None):
+            raise ValueError("term и year задаются вместе")
+        return self
 
 
 class CourseGroupAddRequest(BaseModel):
@@ -71,6 +81,7 @@ class CourseResponse(BaseModel):
     name: str
     description: str | None
     teacher: TeacherResponse
+    semester: SemesterResponse
     scale: ScaleResponse
     grading_note: str | None
     is_archived: bool
@@ -81,6 +92,7 @@ class CoursePreviewResponse(BaseModel):
     id: UUID
     name: str
     teacher: TeacherResponse
+    semester: SemesterResponse
     is_archived: bool
     groups: list[GroupResponse]
     pending_reviews: int | None

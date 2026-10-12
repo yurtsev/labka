@@ -7,6 +7,7 @@ from src.api.courses.dto import (
     CoursePreview,
     GroupRef,
     Scale,
+    SemesterChoice,
     TeacherRef,
 )
 from src.api.exc.courses import (
@@ -29,7 +30,9 @@ from src.core.db.models.course import Course
 from src.core.db.models.group import Group
 from src.core.db.uow import UnitOfWork
 from src.core.errors import InternalError
+from src.core.schedule.service import ScheduleService
 from src.core.security.dto import CurrentUser
+from src.core.utils.moscow_time import now_moscow
 
 
 class CourseService:
@@ -80,9 +83,15 @@ class CourseService:
         return groups.map(tuple(GroupRef(id=group.id, name=group.name) for group in groups.items))
 
     async def create_course(
-        self, user: CurrentUser, fields: CourseFields, group_ids: Collection[UUID]
+        self,
+        user: CurrentUser,
+        fields: CourseFields,
+        group_ids: Collection[UUID],
+        semester: SemesterChoice | None,
     ) -> CourseDetails:
-        """Создаёт курс для прикреплённых к преподавателю групп.
+        """Создаёт курс для прикреплённых к преподавателю групп в выбранном семестре.
+
+        Без `semester` курс идёт в текущем по дате семестре; потом семестр не меняется.
 
         Raises:
             TeacherOnlyError: пользователь не преподаватель.
@@ -90,7 +99,16 @@ class CourseService:
         """
         self._require_teacher(user)
         groups = await self._attachable_groups(user.user_id, group_ids)
-        course = Course(id=uuid7(), teacher_id=user.user_id, groups=groups)
+        if semester is None:
+            current = ScheduleService.current_semester(now_moscow().date())
+            semester = SemesterChoice(term=current.term, year=current.year)
+        course = Course(
+            id=uuid7(),
+            teacher_id=user.user_id,
+            term=semester.term,
+            year=semester.year,
+            groups=groups,
+        )
         self._apply_fields(course, fields)
         self._uow.courses.add(course)
         await self._uow.commit()
@@ -236,6 +254,7 @@ class CourseService:
             id=course.id,
             name=course.name,
             teacher=CourseService._teacher(course),
+            semester=ScheduleService.semester(course.term, course.year),
             is_archived=course.is_archived,
             groups=CourseService._groups(course),
             pending_reviews=pending_reviews,
@@ -248,6 +267,7 @@ class CourseService:
             name=course.name,
             description=course.description,
             teacher=CourseService._teacher(course),
+            semester=ScheduleService.semester(course.term, course.year),
             scale=Scale(type=course.scale_type, min=course.scale_min, max=course.scale_max),
             grading_note=course.grading_note,
             is_archived=course.is_archived,

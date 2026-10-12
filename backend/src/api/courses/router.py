@@ -14,7 +14,7 @@ from src.api.courses.schemas import (
     GroupResponse,
 )
 from src.api.courses.service import CourseService
-from src.api.courses.utils import course_fields
+from src.api.courses.utils import course_fields, semester_choice
 from src.api.pagination import PageNumber, PageResponse, PerPage
 from src.config import cfg
 from src.core.db.dto.group import GroupSearch
@@ -64,7 +64,9 @@ async def create_course(
     current_user: FromDishka[CurrentUser],
     service: FromDishka[CourseService],
 ) -> CourseResponse:
-    course = await service.create_course(current_user, course_fields(body), body.group_ids)
+    course = await service.create_course(
+        current_user, course_fields(body), body.group_ids, semester_choice(body)
+    )
     return CourseResponse.model_validate(course, from_attributes=True)
 
 
