@@ -29,17 +29,23 @@ from src.core.di import (
     FeedProvider,
     FinalGradesProvider,
     MaterialsProvider,
+    NotificationsProvider,
     PersonalTasksProvider,
     ProfileProvider,
+    RealtimeProvider,
     ReviewsProvider,
     S3Provider,
     ScheduleProvider,
+    SchedulerProvider,
     SecurityProvider,
     SubmissionsProvider,
 )
 from src.core.logging import setup_logging
 from src.core.metrics import PrometheusMiddleware
 from src.core.middleware import RequestLoggingMiddleware
+from src.core.realtime.hub import RealtimeHub
+from src.core.realtime.listener import PostgresListener
+from src.core.scheduler.service import SchedulerService
 
 log = logging.getLogger(__name__)
 
@@ -64,6 +70,9 @@ container = make_async_container(
     CalendarProvider(),
     ExamsProvider(),
     FinalGradesProvider(),
+    NotificationsProvider(),
+    RealtimeProvider(),
+    SchedulerProvider(),
 )
 
 
@@ -73,9 +82,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if missing := cfg.missing_required():
         log.critical("app.config_incomplete", extra={"missing_settings": missing})
         raise ConfigIncompleteError({"missing_settings": missing})
+    listener = await container.get(PostgresListener)
+    scheduler = await container.get(SchedulerService)
+    listener.start()
+    scheduler.start()
     try:
         yield
     finally:
+        scheduler.stop()
+        await listener.stop()
+        await (await container.get(RealtimeHub)).close_all(1001)
         await container.close()
 
 

@@ -9,11 +9,14 @@ from src.core.di.exams import ExamsProvider
 from src.core.di.feed import FeedProvider
 from src.core.di.final_grades import FinalGradesProvider
 from src.core.di.materials import MaterialsProvider
+from src.core.di.notifications import NotificationsProvider
 from src.core.di.personal_tasks import PersonalTasksProvider
 from src.core.di.profile import ProfileProvider
+from src.core.di.realtime import RealtimeProvider
 from src.core.di.reviews import ReviewsProvider
 from src.core.di.s3 import S3Provider
 from src.core.di.schedule import ScheduleProvider
+from src.core.di.scheduler import SchedulerProvider
 from src.core.di.security import SecurityProvider
 from src.core.di.session import DbProvider
 from src.core.di.submissions import SubmissionsProvider
@@ -27,6 +30,9 @@ __all__ = [
     "SubmissionsProvider",
     "AdminProvider",
     "AuthProvider",
+    "NotificationsProvider",
+    "RealtimeProvider",
+    "SchedulerProvider",
     "ExamsProvider",
     "FinalGradesProvider",
     "CalendarProvider",
