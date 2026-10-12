@@ -2,10 +2,12 @@ from datetime import time
 from uuid import UUID, uuid7
 
 from sqlalchemy import CheckConstraint, ForeignKeyConstraint, Index
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.db.enums import LessonType, ScheduleRepeat
 from src.core.db.models.base import Base
+from src.core.db.models.course import Course
+from src.core.db.models.group import Group
 
 
 class ScheduleRule(Base):
@@ -32,3 +34,16 @@ class ScheduleRule(Base):
     ends_at: Mapped[time]
     repeat: Mapped[ScheduleRepeat]
     room: Mapped[str | None]
+
+    course: Mapped[Course] = relationship(
+        primaryjoin="ScheduleRule.course_id == Course.id",
+        foreign_keys="ScheduleRule.course_id",
+        viewonly=True,
+        lazy="raise",
+    )
+    group: Mapped[Group] = relationship(
+        primaryjoin="ScheduleRule.group_id == Group.id",
+        foreign_keys="ScheduleRule.group_id",
+        viewonly=True,
+        lazy="raise",
+    )

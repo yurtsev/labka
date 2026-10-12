@@ -3,12 +3,15 @@ from src.core.db.models.assignment import Assignment
 from src.core.db.models.assignment_file import AssignmentFile
 from src.core.db.models.base import Base
 from src.core.db.models.course import Course
+from src.core.db.models.course_exam import CourseExam
 from src.core.db.models.course_group import CourseGroup
 from src.core.db.models.course_material import CourseMaterial
 from src.core.db.models.course_material_file import CourseMaterialFile
 from src.core.db.models.department import Department
 from src.core.db.models.direction import Direction
+from src.core.db.models.extra_lesson import ExtraLesson
 from src.core.db.models.faculty import Faculty
+from src.core.db.models.final_grade import FinalGrade
 from src.core.db.models.group import Group
 from src.core.db.models.group_invite import GroupInvite
 from src.core.db.models.notification import Notification
@@ -31,12 +34,15 @@ __all__ = [
     "AssignmentFile",
     "Base",
     "Course",
+    "CourseExam",
     "CourseGroup",
     "CourseMaterial",
     "CourseMaterialFile",
     "Department",
     "Direction",
+    "ExtraLesson",
     "Faculty",
+    "FinalGrade",
     "Group",
     "GroupInvite",
     "Notification",

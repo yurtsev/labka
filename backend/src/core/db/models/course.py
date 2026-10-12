@@ -4,7 +4,7 @@ from uuid import UUID, uuid7
 from sqlalchemy import CheckConstraint, ForeignKey, Text, false, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.core.db.enums import ScaleType
+from src.core.db.enums import ScaleType, SemesterTerm
 from src.core.db.models.base import Base
 from src.core.db.models.group import Group
 from src.core.db.models.user import User
@@ -24,6 +24,9 @@ class Course(Base):
     teacher_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
     name: Mapped[str]
     description: Mapped[str | None] = mapped_column(Text)
+    # Семестр, в котором идёт курс; год — календарный год начала семестра.
+    term: Mapped[SemesterTerm]
+    year: Mapped[int]
     scale_type: Mapped[ScaleType]
     scale_min: Mapped[int | None]
     scale_max: Mapped[int | None]

@@ -1,4 +1,5 @@
 from collections.abc import Collection
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import exists, func, select, union_all, update
@@ -6,6 +7,8 @@ from sqlalchemy.orm import selectinload
 
 from src.core.db.models.assignment import Assignment
 from src.core.db.models.assignment_file import AssignmentFile
+from src.core.db.models.course import Course
+from src.core.db.models.course_group import CourseGroup
 from src.core.db.models.submission import Submission
 from src.core.db.models.submission_file import SubmissionFile
 from src.core.db.repositories.base import BaseRepository
@@ -28,6 +31,32 @@ class AssignmentRepository(BaseRepository[Assignment]):
         if not assignment_ids:
             return []
         query = select(Assignment).where(Assignment.id.in_(assignment_ids))
+        return list(await self._session.scalars(query))
+
+    async def list_with_deadline(
+        self, teacher_id: UUID | None, group_id: UUID | None, first: datetime, last: datetime
+    ) -> list[Assignment]:
+        """Задания с дедлайном в `[first, last)` в неархивных курсах с курсами.
+
+        Курсы преподавателя (`teacher_id`) или курсы группы студента (`group_id`).
+        """
+        query = (
+            select(Assignment)
+            .join(Course, Course.id == Assignment.course_id)
+            .where(
+                Course.is_archived.is_(False),
+                Assignment.deadline_at >= first,
+                Assignment.deadline_at < last,
+            )
+            .options(selectinload(Assignment.course))
+            .order_by(Assignment.deadline_at, Assignment.id)
+        )
+        if teacher_id is not None:
+            query = query.where(Course.teacher_id == teacher_id)
+        if group_id is not None:
+            query = query.join(CourseGroup, CourseGroup.course_id == Course.id).where(
+                CourseGroup.group_id == group_id
+            )
         return list(await self._session.scalars(query))
 
     async def count_submissions(self, assignment_id: UUID) -> int:

@@ -62,6 +62,21 @@ class LessonType(StrEnum):
     PRACTICE = "practice"
 
 
+class ExamType(StrEnum):
+    """Форма итогового контроля по курсу."""
+
+    CREDIT = "credit"
+    GRADED_CREDIT = "graded_credit"
+    EXAM = "exam"
+
+
+class SemesterTerm(StrEnum):
+    """Осенний семестр нечётный, весенний чётный."""
+
+    AUTUMN = "autumn"
+    SPRING = "spring"
+
+
 class ScheduleRepeat(StrEnum):
     WEEKLY = "weekly"
     EVEN = "even"
