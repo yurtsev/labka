@@ -121,6 +121,20 @@ class Notifications(BaseModel):
     websocket_ping_seconds: int = 30
 
 
+class Dashboard(BaseModel):
+    # Сколько ближайших занятий и дедлайнов и карточек курсов показывает главная.
+    upcoming_lessons: int = 3
+    upcoming_deadlines: int = 3
+    courses: int = 12
+    # На сколько дней вперёд искать ближайшие занятия.
+    lessons_horizon_days: int = 60
+
+
+class Administration(BaseModel):
+    # Сколько групп можно создать за раз.
+    max_batch_groups: int = 30
+
+
 class Logging(BaseModel):
     level: str = "INFO"
 
@@ -140,6 +154,8 @@ class Config(BaseSettings):
     s3: S3 = S3()
     schedule: Schedule = Schedule()
     notifications: Notifications = Notifications()
+    dashboard: Dashboard = Dashboard()
+    administration: Administration = Administration()
 
     def missing_required(self) -> list[str]:
         """Настройки, без которых приложение не запускается, но которые не заданы."""

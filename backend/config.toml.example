@@ -56,3 +56,12 @@ personal_tasks_max_range_days = 366
 reminder_window_hours = 24
 reminder_interval_minutes = 5
 websocket_ping_seconds = 30
+
+[dashboard]
+upcoming_lessons = 3
+upcoming_deadlines = 3
+courses = 12
+lessons_horizon_days = 60
+
+[administration]
+max_batch_groups = 30

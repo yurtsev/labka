@@ -28,6 +28,7 @@ from src.core.di import (
     ExamsProvider,
     FeedProvider,
     FinalGradesProvider,
+    HomeProvider,
     MaterialsProvider,
     NotificationsProvider,
     PersonalTasksProvider,
@@ -73,6 +74,7 @@ container = make_async_container(
     NotificationsProvider(),
     RealtimeProvider(),
     SchedulerProvider(),
+    HomeProvider(),
 )
 
 

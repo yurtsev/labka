@@ -1,4 +1,5 @@
 from collections.abc import Collection
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -183,6 +184,51 @@ class SubmissionRepository(BaseRepository[Submission]):
         )
         return await self._page(query, page, Submission.created_at, Submission.id)
 
+    async def count_pending_for_teacher(self, teacher_id: UUID) -> int:
+        """Сколько попыток ждут проверки по всем неархивным курсам преподавателя."""
+        query = select(func.count()).select_from(
+            self._pending().where(Course.teacher_id == teacher_id).subquery()
+        )
+        return await self._session.scalar(query) or 0
+
+    async def list_pending_deadlines(
+        self, student_id: UUID, group_id: UUID, now: datetime, limit: int
+    ) -> list[Assignment]:
+        """Ближайшие по сроку задания студента, по которым ещё нужно сдавать.
+
+        Дедлайн не раньше `now`, в неархивных курсах его группы; работа не сдана или
+        возвращена на доработку. С курсами и преподавателями.
+        """
+        progress = self._progress(
+            select(Assignment.id)
+            .join(CourseGroup, CourseGroup.course_id == Assignment.course_id)
+            .where(CourseGroup.group_id == group_id)
+        )
+        status = func.coalesce(progress.c.status, ProgressStatus.NOT_SUBMITTED.value)
+        query = (
+            select(Assignment)
+            .join(Course, Course.id == Assignment.course_id)
+            .join(CourseGroup, CourseGroup.course_id == Course.id)
+            .join(
+                progress,
+                and_(
+                    progress.c.assignment_id == Assignment.id,
+                    progress.c.student_id == student_id,
+                ),
+                isouter=True,
+            )
+            .where(
+                CourseGroup.group_id == group_id,
+                Course.is_archived.is_(False),
+                Assignment.deadline_at >= now,
+                status.in_([ProgressStatus.NOT_SUBMITTED.value, ProgressStatus.REVISION.value]),
+            )
+            .options(selectinload(Assignment.course).selectinload(Course.teacher))
+            .order_by(Assignment.deadline_at, Assignment.id)
+            .limit(limit)
+        )
+        return list(await self._session.scalars(query))
+
     async def count_pending_by_course(self, course_ids: Collection[UUID]) -> dict[UUID, int]:
         """Сколько попыток ждут проверки в каждом из курсов."""
         if not course_ids:
@@ -197,7 +243,7 @@ class SubmissionRepository(BaseRepository[Submission]):
         return dict(rows.tuples().all())
 
     @staticmethod
-    def _progress(assignment_ids: Collection[UUID]) -> Subquery:
+    def _progress(assignment_ids: Collection[UUID] | Select[Any]) -> Subquery:
         """Положение каждого студента по заданиям: одна строка на пару «задание + студент».
 
         «Принято» — если принята любая попытка; иначе «на проверке», когда последняя попытка
