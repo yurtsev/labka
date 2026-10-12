@@ -1,4 +1,5 @@
-from collections.abc import AsyncIterator, Collection
+import logging
+from collections.abc import AsyncIterator, Awaitable, Callable, Collection, Sequence
 from contextlib import asynccontextmanager
 from urllib.parse import quote
 
@@ -11,6 +12,7 @@ from botocore.exceptions import (
 )
 
 from src.config import cfg
+from src.core.errors import AppError, ErrorReport
 from src.core.s3.client import S3Client
 from src.core.s3.dto import PresignedUpload, StoredObject
 from src.core.s3.exc import (
@@ -20,6 +22,8 @@ from src.core.s3.exc import (
     S3TimeoutError,
     S3UnavailableError,
 )
+
+log = logging.getLogger(__name__)
 
 
 class S3Storage:
@@ -114,6 +118,37 @@ class S3Storage:
             )
         if errors := result.get("Errors"):
             raise S3BadResponseError({"failed": len(errors)})
+
+    @asynccontextmanager
+    async def discard_on_error(
+        self,
+        keys: Sequence[str],
+        *,
+        prefix: str,
+        attached: Callable[[Collection[str]], Awaitable[set[str]]],
+    ) -> AsyncIterator[None]:
+        """Если запрос отклонён, удаляет из S3 файлы, которые браузер успел загрузить.
+
+        Удаляются только ключи с нужным префиксом, которые не прикреплены ни к одной записи:
+        чужой или уже используемый файл так не стереть. Ошибка самой очистки не заменяет
+        исходную — в лог уходит предупреждение.
+
+        Args:
+            keys: ключи, присланные клиентом.
+            prefix: префикс, под которым такие ключи выдаёт бэкенд.
+            attached: возвращает, какие из ключей уже прикреплены к записям.
+        """
+        try:
+            yield
+        except AppError:
+            try:
+                candidates = [key for key in keys if key.startswith(prefix)]
+                await self.delete_many(set(candidates) - await attached(candidates))
+            except AppError as exc:
+                log.warning(
+                    "s3.discard_failed", extra={"error": ErrorReport.from_exception(exc).to_log()}
+                )
+            raise
 
     @staticmethod
     @asynccontextmanager

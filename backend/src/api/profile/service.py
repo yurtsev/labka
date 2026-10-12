@@ -1,3 +1,4 @@
+from collections.abc import Collection
 from uuid import UUID, uuid7
 
 from src.api.exc.profile import (
@@ -56,22 +57,25 @@ class ProfileService:
             S3UnavailableError, S3TimeoutError, S3BadResponseError: прежний файл удалить
                 не удалось.
         """
-        if not key.startswith(self._key_prefix(user.user_id)):
-            raise ForeignAvatarKeyError
-        try:
-            stored = await self._storage.stat(key)
-        except S3ObjectNotFoundError as exc:
-            raise AvatarNotUploadedError from exc
-        self._check_image(stored.content_type)
-        self._check_size(stored.size)
+        async with self._storage.discard_on_error(
+            [key], prefix=self._key_prefix(user.user_id), attached=self._attached_avatars
+        ):
+            if not key.startswith(self._key_prefix(user.user_id)):
+                raise ForeignAvatarKeyError
+            try:
+                stored = await self._storage.stat(key)
+            except S3ObjectNotFoundError as exc:
+                raise AvatarNotUploadedError from exc
+            self._check_image(stored.content_type)
+            self._check_size(stored.size)
 
-        account = await self._get_user(user.user_id)
-        previous_key = account.avatar_key
-        account.avatar_key = key
-        await self._uow.flush()
-        if previous_key is not None and previous_key != key:
-            await self._storage.delete(previous_key)
-        await self._uow.commit()
+            account = await self._get_user(user.user_id)
+            previous_key = account.avatar_key
+            account.avatar_key = key
+            await self._uow.flush()
+            if previous_key is not None and previous_key != key:
+                await self._storage.delete(previous_key)
+            await self._uow.commit()
         return await self._to_dto(account)
 
     async def remove_avatar(self, user: CurrentUser) -> Profile:
@@ -89,6 +93,11 @@ class ProfileService:
             await self._storage.delete(previous_key)
         await self._uow.commit()
         return await self._to_dto(account)
+
+    async def _attached_avatars(self, keys: Collection[str]) -> set[str]:
+        """Какие из ключей уже стоят аватаркой; незафиксированная замена отменяется."""
+        await self._uow.rollback()
+        return await self._uow.users.attached_avatar_keys(keys)
 
     async def _get_user(self, user_id: UUID) -> User:
         account = await self._uow.users.get_with_affiliation(user_id)

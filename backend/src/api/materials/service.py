@@ -86,16 +86,21 @@ class MaterialService:
             FileTooLargeError: файл больше лимита.
             FileAlreadyAttachedError: файл уже прикреплён.
         """
-        await self._editable(user, course_id)
-        material = CourseMaterial(
-            id=uuid7(),
-            course_id=course_id,
-            title=fields.title,
-            text=fields.text,
-            files=[await self._stored_file(course_id, file) for file in files],
-        )
-        self._uow.course_materials.add(material)
-        await self._commit_files()
+        async with self._storage.discard_on_error(
+            [file.key for file in files],
+            prefix=self._key_prefix(course_id),
+            attached=self._uow.course_material_files.attached_keys,
+        ):
+            await self._editable(user, course_id)
+            material = CourseMaterial(
+                id=uuid7(),
+                course_id=course_id,
+                title=fields.title,
+                text=fields.text,
+                files=[await self._stored_file(course_id, file) for file in files],
+            )
+            self._uow.course_materials.add(material)
+            await self._commit_files()
         return await self._reload(material.id)
 
     async def update_material(
@@ -132,13 +137,18 @@ class MaterialService:
             FileTooLargeError: файл больше лимита.
             FileAlreadyAttachedError: файл уже прикреплён.
         """
-        await self._editable(user, course_id)
-        material = await self._get_material(course_id, material_id)
-        stored = await self._stored_file(course_id, file)
-        stored.material_id = material.id
-        self._uow.course_material_files.add(stored)
-        await self._uow.course_materials.touch(material.id)
-        await self._commit_files()
+        async with self._storage.discard_on_error(
+            [file.key],
+            prefix=self._key_prefix(course_id),
+            attached=self._uow.course_material_files.attached_keys,
+        ):
+            await self._editable(user, course_id)
+            material = await self._get_material(course_id, material_id)
+            stored = await self._stored_file(course_id, file)
+            stored.material_id = material.id
+            self._uow.course_material_files.add(stored)
+            await self._uow.course_materials.touch(material.id)
+            await self._commit_files()
         return await self._reload(material.id)
 
     async def delete_file(
@@ -210,6 +220,7 @@ class MaterialService:
         try:
             await self._uow.commit()
         except IntegrityViolationError as exc:
+            await self._uow.rollback()
             if exc.constraint == "uq_course_material_files_file_key":
                 raise FileAlreadyAttachedError from exc
             raise
