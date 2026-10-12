@@ -94,3 +94,6 @@ class NotificationType(StrEnum):
     GRADE_CHANGED = "grade_changed"
     DEADLINE_REMINDER = "deadline_reminder"
     SUBMISSION_CREATED = "submission_created"
+    EXAM_ASSIGNED = "exam_assigned"
+    EXAM_CHANGED = "exam_changed"
+    FINAL_RESULT_SET = "final_result_set"

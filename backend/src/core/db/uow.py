@@ -14,6 +14,7 @@ from src.core.db.repositories.faculty import FacultyRepository
 from src.core.db.repositories.final_grade import FinalGradeRepository
 from src.core.db.repositories.group import GroupRepository
 from src.core.db.repositories.group_invite import GroupInviteRepository
+from src.core.db.repositories.notification import NotificationRepository
 from src.core.db.repositories.personal_task import PersonalTaskRepository
 from src.core.db.repositories.review import ReviewRepository
 from src.core.db.repositories.schedule_rule import ScheduleRuleRepository
@@ -47,6 +48,7 @@ class UnitOfWork:
         self.personal_tasks = PersonalTaskRepository(self.session)
         self.course_exams = CourseExamRepository(self.session)
         self.final_grades = FinalGradeRepository(self.session)
+        self.notifications = NotificationRepository(self.session)
 
     async def flush(self) -> None:
         await self.session.flush()

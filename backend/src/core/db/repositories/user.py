@@ -64,6 +64,26 @@ class UserRepository(BaseRepository[User]):
         )
         return await self._session.scalar(query)
 
+    async def course_student_ids(self, course_id: UUID) -> list[UUID]:
+        """Активные студенты групп курса."""
+        query = (
+            select(User.id)
+            .join(CourseGroup, CourseGroup.group_id == User.group_id)
+            .where(
+                CourseGroup.course_id == course_id,
+                User.role == UserRole.STUDENT,
+                User.is_active.is_(True),
+            )
+        )
+        return list(await self._session.scalars(query))
+
+    async def group_student_ids(self, group_id: UUID) -> list[UUID]:
+        """Активные студенты группы."""
+        query = select(User.id).where(
+            User.group_id == group_id, User.role == UserRole.STUDENT, User.is_active.is_(True)
+        )
+        return list(await self._session.scalars(query))
+
     async def count_course_students(self, course_id: UUID) -> int:
         """Сколько активных студентов в группах курса."""
         query = (

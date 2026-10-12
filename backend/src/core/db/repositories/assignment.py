@@ -2,15 +2,19 @@ from collections.abc import Collection
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import exists, func, select, union_all, update
+from sqlalchemy import String, exists, func, select, union_all, update
 from sqlalchemy.orm import selectinload
 
+from src.core.db.dto.notification import ReminderTarget
+from src.core.db.enums import NotificationType, UserRole
 from src.core.db.models.assignment import Assignment
 from src.core.db.models.assignment_file import AssignmentFile
 from src.core.db.models.course import Course
 from src.core.db.models.course_group import CourseGroup
+from src.core.db.models.notification import Notification
 from src.core.db.models.submission import Submission
 from src.core.db.models.submission_file import SubmissionFile
+from src.core.db.models.user import User
 from src.core.db.repositories.base import BaseRepository
 
 
@@ -58,6 +62,54 @@ class AssignmentRepository(BaseRepository[Assignment]):
                 CourseGroup.group_id == group_id
             )
         return list(await self._session.scalars(query))
+
+    async def list_reminder_targets(self, now: datetime, until: datetime) -> list[ReminderTarget]:
+        """Студенты, которым пора напомнить о дедлайне в `(now, until]`.
+
+        Задание с дедлайном в неархивном курсе, у студента нет ни одной попытки и напоминание
+        по заданию ему ещё не создавалось.
+        """
+        query = (
+            select(
+                Assignment.id,
+                Assignment.title,
+                Course.id,
+                Course.name,
+                Assignment.deadline_at,
+                User.id,
+            )
+            .join(Course, Course.id == Assignment.course_id)
+            .join(CourseGroup, CourseGroup.course_id == Course.id)
+            .join(User, User.group_id == CourseGroup.group_id)
+            .where(
+                Course.is_archived.is_(False),
+                Assignment.deadline_at > now,
+                Assignment.deadline_at <= until,
+                User.role == UserRole.STUDENT,
+                User.is_active.is_(True),
+                ~exists().where(
+                    Submission.assignment_id == Assignment.id, Submission.student_id == User.id
+                ),
+                ~exists().where(
+                    Notification.user_id == User.id,
+                    Notification.type == NotificationType.DEADLINE_REMINDER,
+                    Notification.data["assignment_id"].astext == func.cast(Assignment.id, String),
+                ),
+            )
+            .order_by(Assignment.deadline_at, Assignment.id, User.id)
+        )
+        rows = await self._session.execute(query)
+        return [
+            ReminderTarget(
+                assignment_id=row[0],
+                assignment_title=row[1],
+                course_id=row[2],
+                course_name=row[3],
+                deadline_at=row[4],
+                student_id=row[5],
+            )
+            for row in rows.all()
+        ]
 
     async def count_submissions(self, assignment_id: UUID) -> int:
         query = select(func.count(Submission.id)).where(Submission.assignment_id == assignment_id)
