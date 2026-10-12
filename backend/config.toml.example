@@ -34,3 +34,20 @@ admin_session_ttl_hours = 12
 cookie_secure = false
 password_min_length = 8
 password_max_length = 32
+
+[schedule]
+# Окна пар; занятия ставятся только на них.
+slots = [
+  { number = 1, starts_at = "09:30", ends_at = "11:00" },
+  { number = 2, starts_at = "11:15", ends_at = "12:45" },
+  { number = 3, starts_at = "13:00", ends_at = "14:30" },
+  { number = 4, starts_at = "15:10", ends_at = "16:40" },
+  { number = 5, starts_at = "16:55", ends_at = "18:25" },
+]
+autumn_starts = { month = 9, day = 1 }
+autumn_classes_end = { month = 12, day = 30 }
+autumn_ends = { month = 1, day = 31 }
+spring_starts = { month = 2, day = 1 }
+spring_classes_end = { month = 7, day = 10 }
+spring_ends = { month = 7, day = 10 }
+personal_tasks_max_range_days = 366

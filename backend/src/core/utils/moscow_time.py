@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
 
 
@@ -12,3 +12,13 @@ def assume_moscow(moment: datetime) -> datetime:
 def to_moscow(moment: datetime) -> datetime:
     """Тот же момент в московском времени — для вывода дедлайнов."""
     return moment.astimezone(ZoneInfo("Europe/Moscow"))
+
+
+def now_moscow() -> datetime:
+    """Текущий момент в московском времени."""
+    return datetime.now(ZoneInfo("Europe/Moscow"))
+
+
+def start_of_day_moscow(day: date) -> datetime:
+    """Начало дня по Москве — полночь, с часовым поясом."""
+    return datetime.combine(day, time.min, tzinfo=ZoneInfo("Europe/Moscow"))

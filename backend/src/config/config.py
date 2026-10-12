@@ -1,3 +1,4 @@
+from datetime import time
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -69,6 +70,39 @@ class Pagination(BaseModel):
     max_per_page: int = 100
 
 
+class MonthDay(BaseModel):
+    month: int
+    day: int
+
+
+class LessonSlot(BaseModel):
+    """Окно пары: занятия ставятся только на такие окна."""
+
+    number: int
+    starts_at: time
+    ends_at: time
+
+
+class Schedule(BaseModel):
+    slots: list[LessonSlot] = [
+        LessonSlot(number=1, starts_at=time(9, 30), ends_at=time(11, 0)),
+        LessonSlot(number=2, starts_at=time(11, 15), ends_at=time(12, 45)),
+        LessonSlot(number=3, starts_at=time(13, 0), ends_at=time(14, 30)),
+        LessonSlot(number=4, starts_at=time(15, 10), ends_at=time(16, 40)),
+        LessonSlot(number=5, starts_at=time(16, 55), ends_at=time(18, 25)),
+    ]
+    # Осенний (нечётный) семестр: пары до `autumn_classes_end`, дальше только сессия.
+    autumn_starts: MonthDay = MonthDay(month=9, day=1)
+    autumn_classes_end: MonthDay = MonthDay(month=12, day=30)
+    autumn_ends: MonthDay = MonthDay(month=1, day=31)
+    # Весенний (чётный) семестр.
+    spring_starts: MonthDay = MonthDay(month=2, day=1)
+    spring_classes_end: MonthDay = MonthDay(month=7, day=10)
+    spring_ends: MonthDay = MonthDay(month=7, day=10)
+    # Самый длинный период личных задач в одном запросе.
+    personal_tasks_max_range_days: int = 366
+
+
 class Logging(BaseModel):
     level: str = "INFO"
 
@@ -86,6 +120,7 @@ class Config(BaseSettings):
     auth: Auth = Auth()
     pagination: Pagination = Pagination()
     s3: S3 = S3()
+    schedule: Schedule = Schedule()
 
     def missing_required(self) -> list[str]:
         """Настройки, без которых приложение не запускается, но которые не заданы."""
