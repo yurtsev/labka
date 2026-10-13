@@ -41,7 +41,7 @@ infra/      docker-compose окружения: Postgres, MinIO, монитори
 
 Python 3.14 · FastAPI · uvicorn · dishka (внедрение зависимостей) · SQLAlchemy 2 (async) + asyncpg ·
 Alembic · PostgreSQL 18 · S3 (MinIO локально) · APScheduler · sqladmin · pydantic-settings ·
-Prometheus + Grafana + Loki + Promtail + cAdvisor (мониторинг и логи) · pytest, Testcontainers,
+Prometheus + Grafana + Loki + Alloy (мониторинг и логи) · pytest, Testcontainers,
 ruff, mypy · менеджер пакетов `uv`.
 
 Зависимости фиксируются в `backend/pyproject.toml` и `backend/uv.lock`.
@@ -92,6 +92,18 @@ make create-admin-docker                # создать администрат�
 | Grafana | http://localhost:3000 |
 
 Остановить: `make down` в `backend/` и `infra/`. Логи: `make logs` там же.
+
+### Мониторинг
+
+Alloy собирает метрики сервера, контейнеров, Postgres и backend в Prometheus (30 дней, до 5 ГБ)
+и логи всех контейнеров в Loki (14 дней). В Grafana, папка Labka:
+
+- **Сервер** — CPU, load average, память и swap, диски, сеть;
+- **Контейнеры** — CPU, память, сеть и диск по каждому контейнеру, время с последнего перезапуска;
+- **Backend** — запросы, ошибки, задержки, самые медленные ручки, ресурсы процесса;
+- **Postgres** — соединения, транзакции, кэш, блокировки, размер БД;
+- **Логи** — ошибки с traceback, упавшие и медленные запросы, поиск по всем логам. Каждый ответ API
+  несёт `X-Request-Id`; если вставить его в фильтр `request_id`, останутся логи только этого запроса.
 
 ### Backend без Docker
 

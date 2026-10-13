@@ -1,0 +1,123 @@
+logging {
+  level = "warn"
+}
+
+// ---------- Метрики ----------
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
+  }
+}
+
+// Сервер: CPU, память, диски, сеть, load average.
+prometheus.exporter.unix "host" {
+  procfs_path = "/host/proc"
+  sysfs_path  = "/sys"
+  rootfs_path = "/host/root"
+
+  filesystem {
+    fs_types_exclude     = "^(autofs|binfmt_misc|bpf|cgroup2?|configfs|erofs|fakeowner|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs|tmpfs)$"
+    mount_points_exclude = "^/(dev|proc|run|sys|host_mnt|oldroot|var/lib/docker/.+)($|/)"
+  }
+}
+
+prometheus.scrape "host" {
+  targets         = prometheus.exporter.unix.host.targets
+  job_name        = "node"
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.default.receiver]
+}
+
+// Контейнеры: CPU, память, сеть, диск по каждому контейнеру.
+prometheus.exporter.cadvisor "containers" {
+  docker_host      = "unix:///var/run/docker.sock"
+  docker_only      = true
+  storage_duration = "2m"
+}
+
+prometheus.scrape "containers" {
+  targets         = prometheus.exporter.cadvisor.containers.targets
+  job_name        = "cadvisor"
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.default.receiver]
+}
+
+// Postgres: соединения, транзакции, размер БД, кэш, блокировки.
+prometheus.exporter.postgres "db" {
+  data_source_names = [string.format(
+    "postgresql://%s:%s@postgres:5432/%s?sslmode=disable",
+    sys.env("POSTGRES_USER"),
+    sys.env("POSTGRES_PASSWORD"),
+    sys.env("POSTGRES_DB"),
+  )]
+}
+
+prometheus.scrape "db" {
+  targets         = prometheus.exporter.postgres.db.targets
+  job_name        = "postgres"
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.default.receiver]
+}
+
+// Backend: HTTP-метрики и процесс Python.
+prometheus.scrape "backend" {
+  targets         = [{"__address__" = "backend:8000"}]
+  job_name        = "backend"
+  metrics_path    = "/metrics"
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.default.receiver]
+}
+
+// ---------- Логи ----------
+
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "containers" {
+  targets = []
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_log_stream"]
+    target_label  = "stream"
+  }
+}
+
+loki.source.docker "containers" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.docker.containers.targets
+  relabel_rules = discovery.relabel.containers.rules
+  forward_to    = [loki.process.containers.receiver]
+}
+
+// Логи backend — JSON: уровень и логгер выносятся в метки.
+loki.process "containers" {
+  stage.json {
+    expressions = {
+      level = "level",
+      src   = "src",
+    }
+  }
+
+  stage.labels {
+    values = {
+      level = "",
+      src   = "",
+    }
+  }
+
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
