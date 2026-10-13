@@ -31,10 +31,10 @@
 ## Состав репозитория
 
 ```
-backend/    FastAPI-сервис, миграции, тесты, docker-compose со всем окружением
+backend/    FastAPI-сервис, миграции, тесты, docker-compose backend
 docs/       требования, сценарии, экраны, план
 frontend/   веб-приложение (пока пусто)
-infra/      зарезервировано под инфраструктуру (пока пусто)
+infra/      docker-compose окружения: Postgres, MinIO, мониторинг, общая сеть labka
 ```
 
 ## Технологии
@@ -65,13 +65,19 @@ ruff, mypy · менеджер пакетов `uv`.
 
 Нужны Docker, [uv](https://docs.astral.sh/uv/) и Python 3.14.
 
-### Backend и база данных (всё в Docker)
+### Backend и окружение (всё в Docker)
+
+Окружение (`infra/`) поднимается отдельно и создаёт Docker-сеть `labka`; backend (а позже frontend)
+поднимается своим compose-файлом и подключается к этой сети.
 
 ```bash
-cd backend
+cd infra
 cp .env.example .env                    # пароли Postgres, MinIO, Grafana — заменить на свои
-cp config.toml.example config.toml      # настройки приложения
-make up                                 # Postgres, MinIO, миграции, backend, мониторинг
+make up                                 # Postgres, MinIO, мониторинг, сеть labka
+
+cd ../backend
+cp config.toml.example config.toml      # настройки приложения; учётки БД и S3 — как в infra/.env
+make up                                 # миграции и backend
 make create-admin-docker                # создать администратора: спросит почту, ФИО и пароль
 ```
 
@@ -85,12 +91,13 @@ make create-admin-docker                # создать администрат�
 | Консоль MinIO | http://localhost:9001 |
 | Grafana | http://localhost:3000 |
 
-Остановить: `make down`. Логи: `make logs`.
+Остановить: `make down` в `backend/` и `infra/`. Логи: `make logs` там же.
 
 ### Backend без Docker
 
-Нужен запущенный PostgreSQL и S3-совместимое хранилище (можно поднять только их:
-`docker compose up -d postgres minio minio-init`).
+Нужен запущенный PostgreSQL и S3-совместимое хранилище — например, окружение из `infra/`
+(`make -C infra up`). В `config.toml` для этого поменять `postgres_host` на `localhost` и `s3.endpoint_url`
+на `http://localhost:9000`: по умолчанию там адреса внутри Docker-сети.
 
 ```bash
 cd backend
@@ -123,9 +130,11 @@ make test-all       # unit + integration (нужен Docker: PostgreSQL и MinIO
 ## Конфигурация и секреты
 
 Настройки читаются из `backend/config.toml` и переопределяются переменными окружения с разделителем
-`__` (например, `DATABASE__POSTGRES_HOST`). Секреты docker-compose — в `backend/.env`.
+`__` (например, `DATABASE__POSTGRES_HOST`). Backend в Docker берёт всё из `config.toml`, поэтому
+для него там указываются адреса внутри сети: `postgres` и `http://minio:9000`. Секреты окружения (Postgres, MinIO, Grafana) — в `infra/.env`;
+учётки БД и S3 в `backend/config.toml` должны с ними совпадать.
 Файлы `.env` и `config.toml` в репозиторий не попадают; примеры без секретов —
-`backend/.env.example` и `backend/config.toml.example`. Перед первым запуском замените все
+`infra/.env.example` и `backend/config.toml.example`. Перед первым запуском замените все
 значения `change-me`.
 
 ## API

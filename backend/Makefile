@@ -11,8 +11,8 @@ TESTS := tests
 help:
 	@echo ""
 	@echo "  Docker"
-	@echo "    up                        собрать и поднять весь стек"
-	@echo "    down                      остановить и убрать стек"
+	@echo "    up                        собрать и поднять backend (сначала make -C ../infra up)"
+	@echo "    down                      остановить и убрать backend"
 	@echo "    build                     пересобрать образ backend"
 	@echo "    logs                      логи всех контейнеров"
 	@echo "    ps                        статус контейнеров"
@@ -43,6 +43,7 @@ help:
 # === Docker ===
 
 up:
+	@docker network inspect labka >/dev/null 2>&1 || { echo "Нет сети labka: сначала подними окружение — make -C ../infra up"; exit 1; }
 	docker compose up --build -d
 
 down:

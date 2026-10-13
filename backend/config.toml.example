@@ -2,11 +2,11 @@
 postgres_username = "app"
 postgres_password = "change-me"
 postgres_db = "app"
-postgres_host = "localhost"
+postgres_host = "postgres"
 postgres_port = 5432
 
 [s3]
-endpoint_url = "http://localhost:9000"
+endpoint_url = "http://minio:9000"
 public_endpoint_url = "http://localhost:9000"
 region = "us-east-1"
 access_key = "change-me"

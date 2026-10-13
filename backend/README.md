@@ -9,7 +9,7 @@ FastAPI-сервис Labka. Общее описание проекта, треб
 make help
 ```
 
-- `up` / `down` / `build` / `logs` / `ps` — docker-compose стек (Postgres, MinIO, backend, мониторинг)
+- `up` / `down` / `build` / `logs` / `ps` — docker-compose backend (миграции и сервис); окружение — в `../infra`
 - `upgrade` / `downgrade REV=<rev>` / `migrate MSG=<msg>` — миграции Alembic
 - `check` / `lint-fix` / `format` / `lint` / `typecheck` — качество кода
 - `test` / `test-integration` / `test-all` — тесты (интеграционным нужен Docker)
