@@ -85,6 +85,9 @@ class ProgressResponse(BaseModel):
     attempts: int
     last_submitted_at: datetime | None
     last_is_late: bool
+    can_submit: bool = Field(
+        description="Можно ли сейчас отправить попытку: те же правила, что при отправке"
+    )
 
 
 class SummaryResponse(BaseModel):

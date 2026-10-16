@@ -20,7 +20,7 @@ from src.api.exc.submissions import (
 from src.api.submissions.dto import Attempt, AttemptFile, AttemptReview, Attempts
 from src.core.access import exc as access_exc
 from src.core.access.service import AccessService
-from src.core.db.enums import DeadlineType, NotificationType, ReviewVerdict, UserRole
+from src.core.db.enums import NotificationType, UserRole
 from src.core.db.exc import IntegrityViolationError
 from src.core.db.models.assignment import Assignment
 from src.core.db.models.course import Course
@@ -29,6 +29,8 @@ from src.core.db.models.submission_file import SubmissionFile
 from src.core.db.uow import UnitOfWork
 from src.core.errors import InternalError
 from src.core.grading.dto import Grade
+from src.core.grading.enums import SubmitWindow
+from src.core.grading.service import GradingService
 from src.core.notifications.dto import Payload
 from src.core.notifications.service import NotificationService
 from src.core.s3.dto import PresignedUpload, UploadedFile
@@ -73,8 +75,7 @@ class SubmissionService:
             FileTooLargeError: файл больше лимита.
         """
         _, assignment = await self._submittable_assignment(user, course_id, assignment_id)
-        history = await self._uow.submissions.history(assignment.id, user.user_id)
-        self._check_can_submit(assignment, history, datetime.now(UTC))
+        await self._check_can_submit(assignment, user.user_id)
         self._check_size(file_size)
         return await self._storage.presign_upload(
             f"{self._key_prefix(course_id, assignment.id, user.user_id)}{uuid7()}", content_type
@@ -118,8 +119,8 @@ class SubmissionService:
             course, assignment = await self._submittable_assignment(user, course_id, assignment_id)
             if not comment and not files:
                 raise EmptySubmissionError
+            is_late = await self._check_can_submit(assignment, user.user_id)
             history = await self._uow.submissions.history(assignment.id, user.user_id)
-            is_late = self._check_can_submit(assignment, history, datetime.now(UTC))
             submission = Submission(
                 id=uuid7(),
                 assignment_id=assignment.id,
@@ -195,34 +196,24 @@ class SubmissionService:
             raise CourseArchivedError({"course_id": str(course_id)})
         return course, await self._get_assignment(course_id, assignment_id)
 
-    @staticmethod
-    def _check_can_submit(
-        assignment: Assignment, history: Sequence[Submission], now: datetime
-    ) -> bool:
-        """Проверяет, можно ли сейчас сдать работу.
-
-        Args:
-            history: попытки студента по заданию с проверками, новые первыми.
+    async def _check_can_submit(self, assignment: Assignment, student_id: UUID) -> bool:
+        """Проверяет, можно ли сейчас сдать работу, по общему правилу `GradingService`.
 
         Returns:
             Будет ли попытка просроченной (мягкий дедлайн прошёл).
         """
-        if any(item.review and item.review.verdict == ReviewVerdict.ACCEPTED for item in history):
-            raise AlreadyAcceptedError({"assignment_id": str(assignment.id)})
-        deadline = assignment.deadline_at
-        if deadline is None or now <= deadline:
-            return False
-        if assignment.deadline_type == DeadlineType.HARD:
-            submitted_in_time = any(item.created_at <= deadline for item in history)
-            returned = (
-                bool(history)
-                and history[0].review is not None
-                and history[0].review.verdict == ReviewVerdict.REVISION
-            )
-            if not (submitted_in_time and returned):
+        rows = await self._uow.submissions.progress([assignment.id], [student_id])
+        match GradingService.submit_window(
+            assignment, rows.get((assignment.id, student_id)), datetime.now(UTC)
+        ):
+            case SubmitWindow.ACCEPTED:
+                raise AlreadyAcceptedError({"assignment_id": str(assignment.id)})
+            case SubmitWindow.CLOSED:
                 raise DeadlinePassedError({"assignment_id": str(assignment.id)})
-            return False
-        return True
+            case SubmitWindow.LATE:
+                return True
+            case SubmitWindow.OPEN:
+                return False
 
     async def _stored_file(self, prefix: str, file: UploadedFile) -> SubmissionFile:
         try:

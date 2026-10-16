@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from uuid import UUID
 
 from src.api.exc.feed import CourseForbiddenError, CourseNotFoundError
@@ -52,9 +53,12 @@ class FeedService:
         summaries: dict[UUID, Summary] = {}
         if user.role == UserRole.STUDENT:
             rows = await self._uow.submissions.progress(assignment_ids, [user.user_id])
+            now = datetime.now(UTC)
             progresses = {
-                assignment_id: GradingService.progress(rows.get((assignment_id, user.user_id)))
-                for assignment_id in assignment_ids
+                assignment.id: GradingService.progress(
+                    rows.get((assignment.id, user.user_id)), assignment, now
+                )
+                for assignment in assignments
             }
         else:
             students = await self._uow.users.count_course_students(course_id)

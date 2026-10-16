@@ -34,6 +34,7 @@ class Progress:
     attempts: int
     last_submitted_at: datetime | None
     last_is_late: bool
+    can_submit: bool
 
 
 @dataclass(frozen=True)

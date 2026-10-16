@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from uuid import UUID, uuid7
 
 from src.api.assignments.dto import (
@@ -127,7 +128,9 @@ class AssignmentService:
             return await self._to_dto(
                 assignment,
                 course,
-                my_progress=GradingService.progress(progress.get((assignment.id, user.user_id))),
+                my_progress=GradingService.progress(
+                    progress.get((assignment.id, user.user_id)), assignment, datetime.now(UTC)
+                ),
             )
         summaries = await self._uow.submissions.summaries(course_id, [assignment.id])
         summary = GradingService.summary(
@@ -273,6 +276,7 @@ class AssignmentService:
             StudentProgressFilter(assignment.id, search.group_id, search.status),
             page,
         )
+        now = datetime.now(UTC)
         return students.map(
             tuple(
                 StudentRow(
@@ -282,7 +286,7 @@ class AssignmentService:
                     middle_name=item.middle_name,
                     group_id=item.group_id,
                     group_name=item.group_name,
-                    progress=GradingService.progress(item.progress),
+                    progress=GradingService.progress(item.progress, assignment, now),
                 )
                 for item in students.items
             )

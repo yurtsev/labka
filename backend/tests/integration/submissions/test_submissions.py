@@ -154,6 +154,68 @@ async def test_hard_deadline_allows_resubmission_after_revision(
     assert (after_revision.json()["number"], after_revision.json()["is_late"]) == (2, False)
 
 
+@pytest.mark.case(id="UC-S5-003")
+async def test_progress_tells_whether_student_can_submit(
+    client: AsyncClient, db: AsyncSession
+) -> None:
+    course = await course_with_student(client, db)
+    free = await create_assignment(client, course["id"], title="Без срока")
+    soft = await create_assignment(
+        client, course["id"], title="Мягкий", deadline_type="soft", deadline_at=past()
+    )
+    hard = await create_assignment(
+        client, course["id"], title="Жёсткий", deadline_type="hard", deadline_at=future()
+    )
+    closed = await create_assignment(
+        client, course["id"], title="Закрыт", deadline_type="hard", deadline_at=past()
+    )
+    await sign_in(client, "student@example.com", "password-1")
+    in_time = (await submit(client, course["id"], hard["id"])).json()
+    done = (await submit(client, course["id"], free["id"])).json()
+    # Попытка сдана за два часа до дедлайна, а дедлайн прошёл час назад.
+    await db.execute(
+        update(Submission)
+        .where(Submission.id == in_time["id"])
+        .values(created_at=datetime.now(UTC) - timedelta(hours=2))
+    )
+    await db.commit()
+    await sign_in(client, "teacher@example.com", "password-1")
+    moved = await client.put(
+        f"/api/courses/{course['id']}/assignments/{hard['id']}",
+        json=assignment_body(title="Жёсткий", deadline_type="hard", deadline_at=past()),
+    )
+    assert moved.status_code == 200, moved.text
+    await sign_in(client, "student@example.com", "password-1")
+
+    async def can_submit() -> dict[str, bool]:
+        cards = [
+            (await client.get(f"/api/courses/{course['id']}/assignments/{item['id']}")).json()
+            for item in (free, soft, hard, closed)
+        ]
+        return {card["title"]: card["my_progress"]["can_submit"] for card in cards}
+
+    before_review = await can_submit()
+    await sign_in(client, "teacher@example.com", "password-1")
+    await review(client, course["id"], hard["id"], in_time["id"], "revision")
+    await review(client, course["id"], free["id"], done["id"], "accepted", score=5)
+    await sign_in(client, "student@example.com", "password-1")
+    after_review = await can_submit()
+    feed = (await client.get(f"/api/courses/{course['id']}/feed")).json()["items"]
+    in_feed = {
+        entry["assignment"]["title"]: entry["assignment"]["my_progress"]["can_submit"]
+        for entry in feed
+        if entry["assignment"]
+    }
+    retry = await submit(client, course["id"], hard["id"], "v2")
+    blocked = await submit(client, course["id"], closed["id"])
+
+    assert before_review == {"Без срока": True, "Мягкий": True, "Жёсткий": False, "Закрыт": False}
+    assert after_review == {"Без срока": False, "Мягкий": True, "Жёсткий": True, "Закрыт": False}
+    assert in_feed == after_review
+    assert retry.status_code == 201, retry.text
+    assert (blocked.status_code, error_code(blocked)) == (409, "submissions.deadline_passed")
+
+
 @pytest.mark.case(id="UC-S5-002")
 async def test_new_attempt_replaces_unreviewed_one(client: AsyncClient, db: AsyncSession) -> None:
     course = await course_with_student(client, db)

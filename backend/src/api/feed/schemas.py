@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, PlainSerializer
+from pydantic import BaseModel, Field, PlainSerializer
 
 from src.core.db.dto.feed import FeedEntryKind
 from src.core.db.enums import AssignmentType, DeadlineType
@@ -23,6 +23,9 @@ class ProgressResponse(BaseModel):
     attempts: int
     last_submitted_at: datetime | None
     last_is_late: bool
+    can_submit: bool = Field(
+        description="Можно ли сейчас отправить попытку: те же правила, что при отправке"
+    )
 
 
 class SummaryResponse(BaseModel):

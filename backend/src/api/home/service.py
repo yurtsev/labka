@@ -53,7 +53,9 @@ class HomeService:
         deadlines = tuple(
             self._deadline(
                 assignment,
-                GradingService.progress(progress.get((assignment.id, user.user_id))).status,
+                GradingService.progress(
+                    progress.get((assignment.id, user.user_id)), assignment, now
+                ).status,
             )
             for assignment in assignments
         )

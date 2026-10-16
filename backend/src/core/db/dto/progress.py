@@ -25,6 +25,7 @@ class ProgressRow:
     student_id: UUID
     status: ProgressStatus
     attempts: int
+    first_submitted_at: datetime | None
     last_submitted_at: datetime | None
     last_is_late: bool
     grade_score: int | None

@@ -762,6 +762,12 @@ layer = "integration"
 domain = "submissions"
 
 [[scenario]]
+id = "UC-S5-003"
+title = "Карточка задания и лента говорят, можно ли сдать (can_submit), по тем же правилам, что и отправка"
+layer = "integration"
+domain = "submissions"
+
+[[scenario]]
 id = "UC-S6-001"
 title = "Студент видит вердикты, оценки и комментарии в истории; текущая оценка — из последней проверки с оценкой"
 layer = "integration"

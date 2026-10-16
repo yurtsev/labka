@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from uuid import UUID, uuid7
 
 from src.api.calendar.dto import Calendar, CourseRef, GroupRef, PersonalTask, TaskFields
@@ -60,9 +60,10 @@ class CalendarService:
             progress = await self._uow.submissions.progress(
                 [assignment.id for assignment in assignments], [user.user_id]
             )
+            now = datetime.now(UTC)
             statuses = {
                 assignment.id: GradingService.progress(
-                    progress.get((assignment.id, user.user_id))
+                    progress.get((assignment.id, user.user_id)), assignment, now
                 ).status
                 for assignment in assignments
             }
