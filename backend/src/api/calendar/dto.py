@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import date, time
+from datetime import date, datetime, time
 from uuid import UUID
 
 from src.api.calendar.enums import CalendarItemKind
@@ -78,3 +78,22 @@ class Calendar:
     period: Period
     weeks: tuple[Week, ...]
     items: tuple[CalendarItem, ...]
+
+
+@dataclass(frozen=True)
+class TaskFields:
+    title: str
+    due_date: date
+    due_time: time | None
+
+
+@dataclass(frozen=True)
+class PersonalTask:
+    """Личная задача студента; дата и время — по МСК."""
+
+    id: UUID
+    title: str
+    due_date: date
+    due_time: time | None
+    is_done: bool
+    created_at: datetime

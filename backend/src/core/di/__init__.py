@@ -11,7 +11,6 @@ from src.core.di.final_grades import FinalGradesProvider
 from src.core.di.home import HomeProvider
 from src.core.di.materials import MaterialsProvider
 from src.core.di.notifications import NotificationsProvider
-from src.core.di.personal_tasks import PersonalTasksProvider
 from src.core.di.profile import ProfileProvider
 from src.core.di.reviews import ReviewsProvider
 from src.core.di.s3 import S3Provider
@@ -36,7 +35,6 @@ __all__ = [
     "ExamsProvider",
     "FinalGradesProvider",
     "CalendarProvider",
-    "PersonalTasksProvider",
     "ScheduleProvider",
     "CoursesProvider",
     "DbProvider",

@@ -813,19 +813,19 @@ title = "Студент видит расписание только своей 
 layer = "integration"
 domain = "schedule"
 
-# --- integration / personal_tasks ---
+# --- integration / calendar: личные задачи ---
 
 [[scenario]]
 id = "UC-S7-001"
 title = "Студент ведёт личные задачи: создание, правка, отметка «сделано», удаление; список за период, задачи без времени первыми"
 layer = "integration"
-domain = "personal_tasks"
+domain = "calendar"
 
 [[scenario]]
 id = "UC-S7-002"
 title = "Личные задачи видит только владелец; чужая — 404, преподаватель — 403, пустое название, длинное название и неверный период — 422"
 layer = "integration"
-domain = "personal_tasks"
+domain = "calendar"
 
 # --- integration / calendar ---
 
