@@ -141,12 +141,9 @@ async def test_students_are_notified_about_course_events(
         f"{submissions_url(course['id'], assignment['id'])}/{attempt['id']}/review",
         json={"grade": {"score": 5}},
     )
-    await sign_in(client, "student@example.com", "password-1")
-    student_id = (await client.get("/api/profile")).json()["id"]
-    await sign_in(client, "teacher@example.com", "password-1")
-    await client.put(f"{url}/final-grades/{student_id}", json={"grade": 5})
 
     await sign_in(client, "student@example.com", "password-1")
+    student_id = (await client.get("/api/profile")).json()["id"]
     student = await notifications(client)
     await sign_in(client, "outsider@example.com", "password-1")
     outsider = await notifications(client)
@@ -155,7 +152,6 @@ async def test_students_are_notified_about_course_events(
 
     # Новые первыми; серии правок (задание, расписание, экзамен, оценка) не плодят дубли.
     assert titles(student) == [
-        "Итоговый результат выставлен",
         "Оценка исправлена",
         "Работа принята",
         "Экзамен изменён",
@@ -180,7 +176,6 @@ async def test_students_are_notified_about_course_events(
         "exam_assigned",
         "submission_reviewed",
         "grade_changed",
-        "final_result_set",
     } <= set(by_type)
     # Повторная правка обновила данные существующего уведомления.
     assert by_type["assignment_updated"]["text"] == "«Лаба 1.2» в курсе «Алгоритмы»"
@@ -194,7 +189,6 @@ async def test_students_are_notified_about_course_events(
     }
     assert by_type["exam_assigned"]["text"] == "«Алгоритмы»: 12 января в 11:15"
     assert by_type["exam_assigned"]["target"]["day"] == "2027-01-12"
-    assert by_type["final_result_set"]["text"] == "«Алгоритмы»: 5 (отлично)"
     assert by_type["schedule_changed"]["target"]["section"] == "schedule"
     assert outsider == []
     assert [item["type"] for item in teacher] == ["submission_created"]

@@ -11,7 +11,6 @@ from src.core.db.models.department import Department
 from src.core.db.models.direction import Direction
 from src.core.db.models.extra_lesson import ExtraLesson
 from src.core.db.models.faculty import Faculty
-from src.core.db.models.final_grade import FinalGrade
 from src.core.db.models.group import Group
 from src.core.db.models.group_invite import GroupInvite
 from src.core.db.models.notification import Notification
@@ -42,7 +41,6 @@ __all__ = [
     "Direction",
     "ExtraLesson",
     "Faculty",
-    "FinalGrade",
     "Group",
     "GroupInvite",
     "Notification",

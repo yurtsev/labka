@@ -116,4 +116,3 @@ class NotificationType(StrEnum):
     SUBMISSION_CREATED = "submission_created"
     EXAM_ASSIGNED = "exam_assigned"
     EXAM_CHANGED = "exam_changed"
-    FINAL_RESULT_SET = "final_result_set"

@@ -39,10 +39,3 @@ class SlotNotFoundError(RuleViolationError):
 class DateOutsideSemesterError(RuleViolationError):
     code = "exams.date_outside_semester"
     message = "Дата должна быть в семестре курса"
-
-
-class ResultsExistError(ConflictError):
-    code = "exams.results_exist"
-    message = (
-        "Нельзя сменить форму контроля или группу: по этому экзамену уже выставлены результаты"
-    )

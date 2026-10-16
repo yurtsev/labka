@@ -26,8 +26,6 @@ class Payload(BaseModel):
     submission_id: UUID | None = None
     attempt: int | None = None
     verdict: ReviewVerdict | None = None
-    grade: int | None = None
-    passed: bool | None = None
     exam_type: ExamType | None = None
     day: date | None = None
     starts_at: time | None = None

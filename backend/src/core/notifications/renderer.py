@@ -95,12 +95,6 @@ class NotificationRenderer:
                 )
             case NotificationType.EXAM_ASSIGNED | NotificationType.EXAM_CHANGED:
                 return NotificationRenderer._exam(type, payload, course)
-            case NotificationType.FINAL_RESULT_SET:
-                return Rendered(
-                    "Итоговый результат выставлен",
-                    f"«{course}»: {NotificationRenderer._result(payload)}",
-                    Target(NotificationSection.FINAL_RESULT, course_id),
-                )
 
     @staticmethod
     def _exam(type: NotificationType, payload: Payload, course: str) -> Rendered:
@@ -127,22 +121,6 @@ class NotificationRenderer:
                 return "дифф. зачёт"
             case _:
                 return "экзамен"
-
-    @staticmethod
-    def _result(payload: Payload) -> str:
-        if payload.passed is not None:
-            return "зачтено" if payload.passed else "не зачтено"
-        match payload.grade:
-            case 5:
-                return "5 (отлично)"
-            case 4:
-                return "4 (хорошо)"
-            case 3:
-                return "3 (удовлетворительно)"
-            case 2:
-                return "2 (не сдал)"
-            case _:
-                raise InternalError({"field": "grade"})
 
     @staticmethod
     def _assignment(payload: Payload, type: NotificationType) -> str:

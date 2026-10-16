@@ -879,44 +879,6 @@ title = "Экзамены двух групп курса: преподавате
 layer = "integration"
 domain = "exams"
 
-# --- integration / final_grades ---
-
-[[scenario]]
-id = "UC-T16-004"
-title = "Экзамен с выставленными результатами нельзя удалить или сменить ему форму и группу; дату и пару менять можно"
-layer = "integration"
-domain = "exams"
-
-[[scenario]]
-id = "UC-T17-001"
-title = "Преподаватель выставляет, исправляет и снимает итоговую оценку студента по курсу с экзаменом"
-layer = "integration"
-domain = "final_grades"
-
-[[scenario]]
-id = "UC-T17-002"
-title = "Итоговый результат отклоняется: вне 2–5, не число, пусто или оба поля сразу, студент вне групп курса или неактивный, студент в роли преподавателя, архивный курс"
-layer = "integration"
-domain = "final_grades"
-
-[[scenario]]
-id = "UC-T17-003"
-title = "Таблица итоговых результатов курса постранично, с фильтром по группе; видна форма контроля группы"
-layer = "integration"
-domain = "final_grades"
-
-[[scenario]]
-id = "UC-T17-004"
-title = "Зачёт — «зачтено / не зачтено», дифф. зачёт и экзамен — оценка 2–5; результат не того вида и группа без назначенной формы контроля отклоняются"
-layer = "integration"
-domain = "final_grades"
-
-[[scenario]]
-id = "UC-S8-001"
-title = "Студент видит свой итоговый результат и форму контроля; пока не выставлен — пусто; преподаватель и чужая группа — отказ"
-layer = "integration"
-domain = "final_grades"
-
 # --- integration / notifications ---
 
 [[scenario]]

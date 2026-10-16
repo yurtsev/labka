@@ -138,20 +138,6 @@ def assignment_payload(**fields: object) -> Payload:
             "«Алгоритмы»",
             NotificationSection.CALENDAR,
         ),
-        (
-            NotificationType.FINAL_RESULT_SET,
-            payload(grade=4),
-            "Итоговый результат выставлен",
-            "«Алгоритмы»: 4 (хорошо)",
-            NotificationSection.FINAL_RESULT,
-        ),
-        (
-            NotificationType.FINAL_RESULT_SET,
-            payload(passed=False),
-            "Итоговый результат выставлен",
-            "«Алгоритмы»: не зачтено",
-            NotificationSection.FINAL_RESULT,
-        ),
     ],
 )
 def test_title_text_and_section(

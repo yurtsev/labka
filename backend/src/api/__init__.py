@@ -7,7 +7,6 @@ from src.api.calendar.router import router as calendar_router
 from src.api.courses.router import router as courses_router
 from src.api.exams.router import router as exams_router
 from src.api.feed.router import router as feed_router
-from src.api.final_grades.router import router as final_grades_router
 from src.api.home.router import router as home_router
 from src.api.materials.router import router as materials_router
 from src.api.notifications.router import router as notifications_router
@@ -29,6 +28,5 @@ router.include_router(reviews_router)
 router.include_router(schedule_router)
 router.include_router(calendar_router)
 router.include_router(exams_router)
-router.include_router(final_grades_router)
 router.include_router(notifications_router)
 router.include_router(home_router)

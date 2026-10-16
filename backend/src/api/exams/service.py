@@ -9,7 +9,6 @@ from src.api.exc.exams import (
     ExamAlreadyExistsError,
     ExamNotFoundError,
     GroupNotInCourseError,
-    ResultsExistError,
     SlotNotFoundError,
 )
 from src.core.access import exc as access_exc
@@ -89,7 +88,6 @@ class ExamService:
             ExamNotFoundError: экзамена нет в этом курсе.
             GroupNotInCourseError: группы нет в курсе.
             ExamAlreadyExistsError: у новой группы в курсе уже есть экзамен.
-            ResultsExistError: смена формы или группы, когда результаты уже выставлены.
             SlotNotFoundError: в сетке нет такой пары.
             DateOutsideSemesterError: дата вне семестра курса.
         """
@@ -103,11 +101,6 @@ class ExamService:
             and await self._uow.course_exams.get_for_group(course.id, fields.group_id) is not None
         ):
             raise ExamAlreadyExistsError({"group_id": str(fields.group_id)})
-        if (fields.group_id, fields.exam_type) != (
-            exam.group_id,
-            exam.exam_type,
-        ) and await self._uow.final_grades.exists_for_group(course.id, exam.group_id):
-            raise ResultsExistError({"group_id": str(exam.group_id)})
         previous_group_id = exam.group_id
         self._apply(exam, fields, slot)
         await self._notify(
@@ -132,14 +125,11 @@ class ExamService:
             CourseForbiddenError: курс чужой или пользователь не преподаватель.
             CourseArchivedError: курс в архиве.
             ExamNotFoundError: экзамена нет в этом курсе.
-            ResultsExistError: по экзамену уже выставлены результаты.
         """
         course = await self._editable(user, course_id)
         exam = await self._uow.course_exams.get_in_course(course.id, exam_id)
         if exam is None:
             raise ExamNotFoundError({"exam_id": str(exam_id)})
-        if await self._uow.final_grades.exists_for_group(course.id, exam.group_id):
-            raise ResultsExistError({"group_id": str(exam.group_id)})
         await self._uow.course_exams.delete(exam)
         await self._notify(course, exam, NotificationType.EXAM_CHANGED, exam.group_id, removed=True)
         await self._uow.commit()

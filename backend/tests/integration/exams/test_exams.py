@@ -128,30 +128,3 @@ async def test_exam_for_second_group_and_visibility(client: AsyncClient, db: Asy
     ]
     assert [item["group"]["name"] for item in student] == ["БВТ2602"]
     assert moved.status_code == 403
-
-
-@pytest.mark.case(id="UC-T16-004")
-async def test_exam_with_results_cannot_change_form_or_disappear(
-    client: AsyncClient, db: AsyncSession
-) -> None:
-    course, group = await autumn_course(client, db)
-    await sign_in(client, "student@example.com", "password-1")
-    student = str((await client.get("/api/profile")).json()["id"])
-    await sign_in(client, "teacher@example.com", "password-1")
-    url = f"/api/courses/{course['id']}/exams"
-    exam = (await client.post(url, json=exam_body(group.id, exam_type="exam"))).json()
-    grades = f"/api/courses/{course['id']}/final-grades"
-    await client.put(f"{grades}/{student}", json={"grade": 5})
-
-    new_form = await client.put(f"{url}/{exam['id']}", json=exam_body(group.id, exam_type="credit"))
-    new_date = await client.put(
-        f"{url}/{exam['id']}", json=exam_body(group.id, day="2027-01-20", slot=3)
-    )
-    removed = await client.delete(f"{url}/{exam['id']}")
-    await client.delete(f"{grades}/{student}")
-    deleted = await client.delete(f"{url}/{exam['id']}")
-
-    assert (new_form.status_code, error_code(new_form)) == (409, "exams.results_exist")
-    assert new_date.status_code == 200, new_date.text
-    assert (removed.status_code, error_code(removed)) == (409, "exams.results_exist")
-    assert deleted.status_code == 204

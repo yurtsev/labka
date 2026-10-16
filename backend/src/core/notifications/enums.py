@@ -10,4 +10,3 @@ class NotificationSection(StrEnum):
     SCHEDULE = "schedule"
     CALENDAR = "calendar"
     REVIEW = "review"
-    FINAL_RESULT = "final_result"

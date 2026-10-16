@@ -7,7 +7,6 @@ from src.core.di.calendar import CalendarProvider
 from src.core.di.courses import CoursesProvider
 from src.core.di.exams import ExamsProvider
 from src.core.di.feed import FeedProvider
-from src.core.di.final_grades import FinalGradesProvider
 from src.core.di.home import HomeProvider
 from src.core.di.materials import MaterialsProvider
 from src.core.di.notifications import NotificationsProvider
@@ -33,7 +32,6 @@ __all__ = [
     "NotificationsProvider",
     "SchedulerProvider",
     "ExamsProvider",
-    "FinalGradesProvider",
     "CalendarProvider",
     "ScheduleProvider",
     "CoursesProvider",
