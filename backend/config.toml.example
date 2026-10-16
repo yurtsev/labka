@@ -24,7 +24,7 @@ max_per_page = 100
 level = "INFO"
 
 [cors]
-origins = ["http://localhost:3000"]
+origins = ["http://localhost:5173"]
 
 [auth]
 jwt_secret = "change-me"
