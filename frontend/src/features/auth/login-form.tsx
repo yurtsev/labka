@@ -18,12 +18,12 @@ import { Spinner } from '@/shared/ui/spinner'
 const schema = z.object({ email: emailSchema, password: passwordSchema })
 type Values = z.infer<typeof schema>
 
-export function LoginForm({ demo }: { demo?: Values }) {
+export function LoginForm() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const from = (useLocation().state as { from?: string } | null)?.from ?? '/'
   const [formError, setFormError] = useState<string | null>(null)
-  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' }, values: demo })
+  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' } })
 
   const mutation = useMutation({
     mutationFn: login,

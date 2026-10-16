@@ -1,6 +1,3 @@
-/** `mock` — демонстрационные данные в браузере, `real` — backend на /api. */
-export const API_MODE: 'mock' | 'real' = import.meta.env.VITE_API_MODE === 'real' ? 'real' : 'mock'
-
 /**
  * Лимиты форм из frontend/.env — те же значения, что в backend/config.toml. Сервер проверяет их сам;
  * здесь они нужны для понятной ошибки под полем. Наличие переменных проверяет vite.config.ts.

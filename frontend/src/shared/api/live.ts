@@ -1,5 +1,3 @@
-import { API_MODE } from '@/shared/config'
-
 import { refreshSession } from './client'
 
 import type { Notification } from './types'
@@ -15,18 +13,6 @@ export type LiveMessage =
  * (код 4401) сначала обновляет сессию; после переподключения список нужно перечитать (`resync`).
  */
 export function subscribeLive(onMessage: (msg: LiveMessage) => void): () => void {
-  if (API_MODE === 'mock') {
-    let stop = () => {}
-    let cancelled = false
-    import('./mock').then((m) => {
-      if (!cancelled) stop = m.mockLive(onMessage)
-    })
-    return () => {
-      cancelled = true
-      stop()
-    }
-  }
-
   let socket: WebSocket | null = null
   let stopped = false
   let retry: ReturnType<typeof setTimeout>

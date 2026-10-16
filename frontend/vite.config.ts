@@ -3,8 +3,8 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv } from 'vite'
 
-// В режиме VITE_API_MODE=real запросы /api уходят на backend: так cookie сессии
-// остаются на одном адресе с приложением, и CORS не нужен.
+// Запросы /api уходят на backend: так cookie сессии остаются на одном адресе с приложением,
+// и CORS не нужен.
 const backend = process.env.BACKEND_URL ?? 'http://localhost:8000'
 
 // Как backend без config.toml: без обязательных настроек приложение не стартует и называет каждую.

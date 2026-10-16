@@ -1,7 +1,5 @@
 import createClient from 'openapi-fetch'
 
-import { API_MODE } from '@/shared/config'
-
 import type { paths } from './schema'
 
 /** Ошибка API в формате backend: `{"error": {"code", "message", "details"}}`. */
@@ -51,7 +49,7 @@ export function refreshSession(failedAt = Date.now()): Promise<boolean> {
   return inFlight
 }
 
-/** Запрос к настоящему API: на 401 обновляет токены и повторяет запрос один раз. */
+/** Запрос к API: на 401 обновляет токены и повторяет запрос один раз. */
 async function fetchWithRefresh(request: Request): Promise<Response> {
   const retry = request.clone()
   const sentAt = Date.now()
@@ -63,8 +61,7 @@ async function fetchWithRefresh(request: Request): Promise<Response> {
 export const client = createClient<paths>({
   baseUrl: '',
   credentials: 'include',
-  // Демо-backend грузится отдельной частью и только в демо-режиме.
-  fetch: API_MODE === 'mock' ? async (request) => (await import('./mock')).mockFetch(request) : fetchWithRefresh,
+  fetch: fetchWithRefresh,
 })
 
 type Result<T> = { data?: T; error?: unknown; response: Response }
@@ -90,7 +87,6 @@ export async function unwrap<T>(promise: Promise<Result<T>>): Promise<T> {
 
 /**
  * Загрузка файлов: presigned-форма от backend → файл напрямую в S3 → ключи для записи.
- * В демо-режиме форма фиктивная, и файл никуда не отправляется.
  */
 export async function uploadFiles(
   files: File[],
@@ -99,16 +95,11 @@ export async function uploadFiles(
   return Promise.all(
     files.map(async (file) => {
       const form = await start({ content_type: file.type || 'application/octet-stream', file_size: file.size })
-      if (form.url.startsWith('mock:')) {
-        const mock = await import('./mock')
-        mock.mockPreviews.set(form.key, URL.createObjectURL(file))
-      } else {
-        const body = new FormData()
-        Object.entries(form.fields).forEach(([k, v]) => body.append(k, v))
-        body.append('file', file)
-        const res = await fetch(form.url, { method: 'POST', body })
-        if (!res.ok) throw new ApiError(res.status, 's3.upload_failed', `Не удалось загрузить «${file.name}»`)
-      }
+      const body = new FormData()
+      Object.entries(form.fields).forEach(([k, v]) => body.append(k, v))
+      body.append('file', file)
+      const res = await fetch(form.url, { method: 'POST', body })
+      if (!res.ok) throw new ApiError(res.status, 's3.upload_failed', `Не удалось загрузить «${file.name}»`)
       return { key: form.key, file_name: file.name }
     }),
   )

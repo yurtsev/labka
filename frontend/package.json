@@ -5,13 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:real": "VITE_API_MODE=real vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "oxlint",
     "typecheck": "tsc -b --noEmit",
     "api:types": "npx --yes openapi-typescript@7.13.0 src/shared/api/openapi.json -o src/shared/api/schema.d.ts",
-    "screenshots": "node scripts/screenshots.mjs",
     "icons": "node scripts/icons.mjs && node scripts/file-icons.mjs"
   },
   "dependencies": {
@@ -44,7 +42,6 @@
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "oxlint": "^1.81.0",
-    "playwright-core": "^1.64.1",
     "typescript": "~6.0.2",
     "vite": "^8.3.0"
   }
