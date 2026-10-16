@@ -20,6 +20,5 @@ cat > /tmp/backend-policy.json <<POLICY
 POLICY
 mc admin policy create local labka-backend /tmp/backend-policy.json
 mc admin user add local "$S3_ACCESS_KEY" "$S3_SECRET_KEY"
-if ! mc admin user info local "$S3_ACCESS_KEY" | grep -q labka-backend; then
-  mc admin policy attach local labka-backend --user "$S3_ACCESS_KEY"
-fi
+# В образе MinIO нет grep: повторная привязка политики возвращает ошибку, её пропускаем.
+mc admin policy attach local labka-backend --user "$S3_ACCESS_KEY" || true
