@@ -27,7 +27,6 @@ from src.core.errors import (
     RuleViolationError,
     UnauthenticatedError,
 )
-from src.core.metrics import app_errors_total, http_requests_total, route_path
 
 log = logging.getLogger(__name__)
 
@@ -96,13 +95,10 @@ class ApiErrorHandler:
     @staticmethod
     async def handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
         """Последний рубеж. Работает в `ServerErrorMiddleware` снаружи остальных middleware,
-        поэтому сам считает запрос в `http_requests_total` и ставит `X-Request-Id`."""
+        поэтому сам ставит `X-Request-Id`."""
         report = ErrorReport.from_exception(exc)
         status = HTTPStatus.INTERNAL_SERVER_ERROR
         ApiErrorHandler._record(request, report, status, logging.ERROR, exc)
-        http_requests_total.labels(
-            method=request.method, path=route_path(request.scope), status=status.value
-        ).inc()
         return ApiErrorHandler._respond(
             status,
             InternalError.code,
@@ -165,12 +161,6 @@ class ApiErrorHandler:
                 "http": {"method": request.method, "path": request.url.path},
             },
         )
-        app_errors_total.labels(
-            layer=report.layer.value,
-            code=report.code,
-            status=status.value,
-            untranslated=report.untranslated,
-        ).inc()
 
     @staticmethod
     def _respond(

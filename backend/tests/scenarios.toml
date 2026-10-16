@@ -385,7 +385,7 @@ domain = "admin"
 
 [[scenario]]
 id = "ADMIN-STRUCTURE-003"
-title = "Ожидаемая ошибка формы админки пишется в лог как info без стектрейса и считается в app_errors_total"
+title = "Ожидаемая ошибка формы админки пишется в лог как info без стектрейса"
 layer = "integration"
 domain = "admin"
 

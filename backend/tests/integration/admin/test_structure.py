@@ -4,7 +4,6 @@ from uuid import UUID, uuid7
 
 import pytest
 from httpx import AsyncClient, Response
-from prometheus_client import REGISTRY
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.db.enums import UserRole
@@ -109,13 +108,6 @@ async def test_admin_form_error_is_reported(
 ) -> None:
     await create_structure(db, direction="ВТ")
     await signed_in_admin(client, db)
-    labels = {
-        "layer": "domain",
-        "code": "admin.faculty_name_taken",
-        "status": "400",
-        "untranslated": "False",
-    }
-    before = REGISTRY.get_sample_value("app_errors_total", labels) or 0
 
     with caplog.at_level(logging.INFO):
         response = await save_form(
@@ -129,4 +121,3 @@ async def test_admin_form_error_is_reported(
         logging.INFO,
         None,
     )
-    assert REGISTRY.get_sample_value("app_errors_total", labels) == before + 1

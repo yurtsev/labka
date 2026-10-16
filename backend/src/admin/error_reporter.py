@@ -2,13 +2,12 @@ import logging
 from http import HTTPStatus
 
 from src.core.errors import DomainError, ErrorReport
-from src.core.metrics import app_errors_total
 
 log = logging.getLogger(__name__)
 
 
 class AdminErrorReporter(logging.Filter):
-    """Ошибки форм и действий админки — в общий формат лога и в метрику `app_errors_total`.
+    """Ошибки форм и действий админки — в общий формат лога.
 
     sqladmin ловит любое исключение из `insert_model`/`update_model`/`delete_model`,
     показывает его текст в форме и пишет `logger.exception`. Другой точки перехвата у него
@@ -29,10 +28,4 @@ class AdminErrorReporter(logging.Filter):
             exc_info=None if expected else exc,
             extra={"error": {**report.to_log(), "status": status.value}},
         )
-        app_errors_total.labels(
-            layer=report.layer.value,
-            code=report.code,
-            status=status.value,
-            untranslated=report.untranslated,
-        ).inc()
         return False

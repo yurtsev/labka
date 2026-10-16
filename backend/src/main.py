@@ -8,8 +8,6 @@ from dishka.integrations.fastapi import FastapiProvider
 from dishka.integrations.fastapi import setup_dishka as setup_fastapi_dishka
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
-from prometheus_client import CONTENT_TYPE_LATEST, REGISTRY, generate_latest
 
 from src.admin.site import AdminSite
 from src.api import router
@@ -40,7 +38,6 @@ from src.core.di import (
     SubmissionsProvider,
 )
 from src.core.logging import setup_logging
-from src.core.metrics import PrometheusMiddleware
 from src.core.middleware import RequestLoggingMiddleware
 from src.core.realtime.hub import RealtimeHub
 from src.core.realtime.listener import PostgresListener
@@ -108,7 +105,6 @@ app.add_middleware(
     allow_credentials=True,
 )
 
-app.add_middleware(PrometheusMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 
 app.include_router(router)
@@ -120,11 +116,6 @@ AdminSite.mount(app)
 @app.get("/")
 async def ping() -> dict[str, str]:
     return {"ping": "pong"}
-
-
-@app.get("/metrics")
-async def metrics() -> Response:
-    return Response(generate_latest(REGISTRY), media_type=CONTENT_TYPE_LATEST)
 
 
 def main() -> None:

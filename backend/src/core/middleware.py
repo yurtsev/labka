@@ -19,21 +19,16 @@ class RequestLoggingMiddleware:
 
         request_id = set_request_id()
         path = scope["path"]
-        is_metrics = path == "/metrics"
         start = time.monotonic()
         status_holder: dict[str, int] = {}
 
         async def send_wrapper(message: Message) -> None:
             if message["type"] == "http.response.start":
                 status_holder["status"] = message["status"]
-                if not is_metrics:
-                    message.setdefault("headers", []).append((b"x-request-id", request_id.encode()))
+                message.setdefault("headers", []).append((b"x-request-id", request_id.encode()))
             await send(message)
 
         await self.app(scope, receive, send_wrapper)
-
-        if is_metrics:
-            return
 
         duration_ms = round((time.monotonic() - start) * 1000)
         status_code = status_holder.get("status", 0)
