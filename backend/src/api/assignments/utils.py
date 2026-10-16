@@ -1,8 +1,7 @@
-from src.api.assignments.dto import AssignmentFields, UploadedFile
+from src.api.assignments.dto import AssignmentFields
 from src.api.assignments.schemas import (
     AssignmentUpdateRequest,
     RangeScaleSchema,
-    UploadedFileRequest,
 )
 from src.core.grading.dto import Scale
 
@@ -25,7 +24,3 @@ def assignment_fields(body: AssignmentUpdateRequest) -> AssignmentFields:
         else None,
         grading_note=body.grading_note or None,
     )
-
-
-def uploaded_file(body: UploadedFileRequest) -> UploadedFile:
-    return UploadedFile(key=body.key, file_name=body.file_name)

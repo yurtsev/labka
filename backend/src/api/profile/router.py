@@ -5,9 +5,9 @@ from src.api.profile.schemas import (
     AvatarSetRequest,
     AvatarUploadStartRequest,
     ProfileResponse,
-    UploadFormResponse,
 )
 from src.api.profile.service import ProfileService
+from src.api.schemas import UploadFormResponse
 from src.core.security.dto import CurrentUser
 
 router = APIRouter(prefix="/profile", tags=["profile"], route_class=DishkaRoute)

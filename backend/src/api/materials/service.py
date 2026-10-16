@@ -12,7 +12,7 @@ from src.api.exc.materials import (
     MaterialFileNotFoundError,
     MaterialNotFoundError,
 )
-from src.api.materials.dto import Material, MaterialFields, MaterialFile, UploadedFile
+from src.api.materials.dto import Material, MaterialFields, MaterialFile
 from src.core.access import exc as access_exc
 from src.core.access.service import AccessService
 from src.core.db.dto.page import Page, PageRequest
@@ -25,8 +25,8 @@ from src.core.db.uow import UnitOfWork
 from src.core.errors import InternalError
 from src.core.notifications.dto import Payload
 from src.core.notifications.service import NotificationService
-from src.core.s3.dto import PresignedUpload
-from src.core.s3.exc import S3FileTooLargeError, S3ObjectNotFoundError
+from src.core.s3.dto import PresignedUpload, UploadedFile
+from src.core.s3.exc import S3FileTooLargeError, S3ForeignKeyError, S3ObjectNotFoundError
 from src.core.s3.service import S3Storage
 from src.core.security.dto import CurrentUser
 
@@ -216,13 +216,14 @@ class MaterialService:
 
     async def _stored_file(self, course_id: UUID, file: UploadedFile) -> CourseMaterialFile:
         """Запись о файле материала по данным из S3; к материалу её привязывает вызывающий."""
-        if not file.key.startswith(self._key_prefix(course_id)):
-            raise ForeignFileKeyError({"course_id": str(course_id)})
         try:
-            stored = await self._storage.stat(file.key)
+            stored = await self._storage.uploaded(file, self._key_prefix(course_id))
+        except S3ForeignKeyError as exc:
+            raise ForeignFileKeyError({"course_id": str(course_id)}) from exc
         except S3ObjectNotFoundError as exc:
             raise FileNotUploadedError({"course_id": str(course_id)}) from exc
-        self._check_size(stored.size)
+        except S3FileTooLargeError as exc:
+            raise FileTooLargeError(exc.context) from exc
         return CourseMaterialFile(
             id=uuid7(),
             file_key=file.key,

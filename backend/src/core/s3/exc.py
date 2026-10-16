@@ -11,6 +11,11 @@ class S3FileTooLargeError(CoreError):
     message = "Файл больше допустимого размера"
 
 
+class S3ForeignKeyError(CoreError):
+    code = "s3.foreign_key"
+    message = "Ключ файла выдан для другой загрузки"
+
+
 class S3ObjectNotFoundError(CoreError):
     code = "s3.object_not_found"
     message = "Файл не найден в хранилище"

@@ -7,15 +7,14 @@ from src.api.materials.schemas import (
     MaterialCreateRequest,
     MaterialResponse,
     MaterialUpdateRequest,
-    UploadedFileRequest,
-    UploadFormResponse,
-    UploadStartRequest,
 )
 from src.api.materials.service import MaterialService
-from src.api.materials.utils import material_fields, uploaded_file
+from src.api.materials.utils import material_fields
 from src.api.pagination import PageNumber, PageResponse, PerPage
+from src.api.schemas import UploadedFileRequest, UploadFormResponse, UploadStartRequest
 from src.config import cfg
 from src.core.db.dto.page import PageRequest
+from src.core.s3.dto import UploadedFile
 from src.core.security.dto import CurrentUser
 
 router = APIRouter(
@@ -57,7 +56,7 @@ async def create_material(
         current_user,
         course_id,
         material_fields(body),
-        [uploaded_file(file) for file in body.files],
+        [UploadedFile(key=file.key, file_name=file.file_name) for file in body.files],
     )
     return MaterialResponse.model_validate(material, from_attributes=True)
 
@@ -94,7 +93,9 @@ async def add_material_file(
     current_user: FromDishka[CurrentUser],
     service: FromDishka[MaterialService],
 ) -> MaterialResponse:
-    material = await service.add_file(current_user, course_id, material_id, uploaded_file(body))
+    material = await service.add_file(
+        current_user, course_id, material_id, UploadedFile(key=body.key, file_name=body.file_name)
+    )
     return MaterialResponse.model_validate(material, from_attributes=True)
 
 

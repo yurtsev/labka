@@ -12,6 +12,7 @@ from pydantic import (
     model_validator,
 )
 
+from src.api.schemas import UploadedFileRequest
 from src.core.db.enums import AssignmentType, DeadlineType, ScaleType
 from src.core.grading.enums import ProgressStatus
 from src.core.utils.moscow_time import assume_moscow, to_moscow
@@ -21,9 +22,6 @@ type OptionalText = Annotated[str, StringConstraints(strip_whitespace=True)] | N
 # Дедлайн вводится по МСК: время без часового пояса считается московским.
 type DeadlineIn = Annotated[datetime, AfterValidator(assume_moscow)]
 type DeadlineOut = Annotated[datetime, PlainSerializer(to_moscow, return_type=datetime)]
-type ContentType = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)
-]
 
 
 class RangeScaleSchema(BaseModel):
@@ -47,26 +45,6 @@ class BinaryScaleSchema(BaseModel):
 
 
 type ScaleSchema = Annotated[RangeScaleSchema | BinaryScaleSchema, Field(discriminator="type")]
-
-
-class UploadStartRequest(BaseModel):
-    content_type: ContentType
-    file_size: Annotated[int, Field(ge=1)]
-
-
-class UploadFormResponse(BaseModel):
-    """Форма для браузера: POST multipart на `url`, все `fields` и файл последним полем `file`."""
-
-    key: str
-    url: str
-    fields: dict[str, str]
-
-
-class UploadedFileRequest(BaseModel):
-    key: Annotated[str, StringConstraints(min_length=1, max_length=512)]
-    file_name: Annotated[
-        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)
-    ]
 
 
 class AssignmentUpdateRequest(BaseModel):

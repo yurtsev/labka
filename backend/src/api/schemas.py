@@ -1,10 +1,10 @@
-from datetime import date, datetime
+from datetime import date
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, StringConstraints
 
-from src.core.db.enums import NotificationType, SemesterTerm
-from src.core.notifications.enums import NotificationSection
+from src.core.db.enums import SemesterTerm
 
 
 class SemesterResponse(BaseModel):
@@ -22,23 +22,26 @@ class CourseRefResponse(BaseModel):
     name: str
 
 
-class TargetResponse(BaseModel):
-    """Куда вести по уведомлению: раздел и идентификаторы объектов в нём."""
-
-    section: NotificationSection
-    course_id: UUID | None
-    assignment_id: UUID | None
-    submission_id: UUID | None
-    student_id: UUID | None
-    day: date | None
+type ContentType = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)
+]
 
 
-class NotificationResponse(BaseModel):
-    id: UUID
-    type: NotificationType
-    title: str
-    text: str
-    course: CourseRefResponse | None
-    target: TargetResponse
-    is_read: bool
-    created_at: datetime
+class UploadStartRequest(BaseModel):
+    content_type: ContentType
+    file_size: Annotated[int, Field(ge=1)]
+
+
+class UploadFormResponse(BaseModel):
+    """Форма для браузера: POST multipart на `url`, все `fields` и файл последним полем `file`."""
+
+    key: str
+    url: str
+    fields: dict[str, str]
+
+
+class UploadedFileRequest(BaseModel):
+    key: Annotated[str, StringConstraints(min_length=1, max_length=512)]
+    file_name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)
+    ]

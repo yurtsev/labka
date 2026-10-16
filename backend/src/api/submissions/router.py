@@ -3,15 +3,14 @@ from uuid import UUID
 from dishka.integrations.fastapi import DishkaRoute, FromDishka
 from fastapi import APIRouter, status
 
+from src.api.schemas import UploadFormResponse, UploadStartRequest
 from src.api.submissions.schemas import (
     AttemptResponse,
     AttemptsResponse,
     SubmissionCreateRequest,
-    UploadFormResponse,
-    UploadStartRequest,
 )
 from src.api.submissions.service import SubmissionService
-from src.api.submissions.utils import uploaded_file
+from src.core.s3.dto import UploadedFile
 from src.core.security.dto import CurrentUser
 
 router = APIRouter(
@@ -48,7 +47,7 @@ async def submit(
         course_id,
         assignment_id,
         body.comment or None,
-        [uploaded_file(file) for file in body.files],
+        [UploadedFile(key=file.key, file_name=file.file_name) for file in body.files],
     )
     return AttemptResponse.model_validate(attempt, from_attributes=True)
 

@@ -13,14 +13,6 @@ class AvatarUploadStartRequest(BaseModel):
     file_size: Annotated[int, Field(ge=1)]
 
 
-class UploadFormResponse(BaseModel):
-    """Форма для браузера: POST multipart на `url`, все `fields` и файл последним полем `file`."""
-
-    key: str
-    url: str
-    fields: dict[str, str]
-
-
 class AvatarSetRequest(BaseModel):
     key: Annotated[str, StringConstraints(min_length=1, max_length=512)]
 

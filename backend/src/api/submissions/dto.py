@@ -7,14 +7,6 @@ from src.core.grading.dto import Grade
 
 
 @dataclass(frozen=True)
-class UploadedFile:
-    """Файл, который браузер уже загрузил в S3 по форме бэкенда."""
-
-    key: str
-    file_name: str
-
-
-@dataclass(frozen=True)
 class AttemptFile:
     id: UUID
     file_name: str

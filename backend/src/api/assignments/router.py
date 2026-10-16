@@ -10,16 +10,15 @@ from src.api.assignments.schemas import (
     AssignmentResponse,
     AssignmentUpdateRequest,
     StudentRowResponse,
-    UploadedFileRequest,
-    UploadFormResponse,
-    UploadStartRequest,
 )
 from src.api.assignments.service import AssignmentService
-from src.api.assignments.utils import assignment_fields, uploaded_file
+from src.api.assignments.utils import assignment_fields
 from src.api.pagination import PageNumber, PageResponse, PerPage
+from src.api.schemas import UploadedFileRequest, UploadFormResponse, UploadStartRequest
 from src.config import cfg
 from src.core.db.dto.page import PageRequest
 from src.core.grading.enums import ProgressStatus
+from src.core.s3.dto import UploadedFile
 from src.core.security.dto import CurrentUser
 
 router = APIRouter(
@@ -49,7 +48,7 @@ async def create_assignment(
         current_user,
         course_id,
         assignment_fields(body),
-        [uploaded_file(file) for file in body.files],
+        [UploadedFile(key=file.key, file_name=file.file_name) for file in body.files],
     )
     return AssignmentResponse.model_validate(assignment, from_attributes=True)
 
@@ -97,7 +96,9 @@ async def add_assignment_file(
     current_user: FromDishka[CurrentUser],
     service: FromDishka[AssignmentService],
 ) -> AssignmentResponse:
-    assignment = await service.add_file(current_user, course_id, assignment_id, uploaded_file(body))
+    assignment = await service.add_file(
+        current_user, course_id, assignment_id, UploadedFile(key=body.key, file_name=body.file_name)
+    )
     return AssignmentResponse.model_validate(assignment, from_attributes=True)
 
 

@@ -21,14 +21,6 @@ class AssignmentFields:
 
 
 @dataclass(frozen=True)
-class UploadedFile:
-    """Файл, который браузер уже загрузил в S3 по форме бэкенда."""
-
-    key: str
-    file_name: str
-
-
-@dataclass(frozen=True)
 class AssignmentFile:
     id: UUID
     file_name: str

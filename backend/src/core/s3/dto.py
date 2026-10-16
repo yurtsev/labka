@@ -11,6 +11,14 @@ class PresignedUpload:
 
 
 @dataclass(frozen=True)
+class UploadedFile:
+    """Файл, который браузер уже загрузил в S3 по форме бэкенда."""
+
+    key: str
+    file_name: str
+
+
+@dataclass(frozen=True)
 class StoredObject:
     size: int
     content_type: str

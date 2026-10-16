@@ -14,10 +14,11 @@ from botocore.exceptions import (
 from src.config import cfg
 from src.core.errors import AppError, ErrorReport
 from src.core.s3.client import S3Client
-from src.core.s3.dto import PresignedUpload, StoredObject
+from src.core.s3.dto import PresignedUpload, StoredObject, UploadedFile
 from src.core.s3.exc import (
     S3BadResponseError,
     S3FileTooLargeError,
+    S3ForeignKeyError,
     S3ObjectNotFoundError,
     S3TimeoutError,
     S3UnavailableError,
@@ -97,6 +98,20 @@ class S3Storage:
             size=int(head["ContentLength"]),
             content_type=str(head.get("ContentType") or "application/octet-stream"),
         )
+
+    async def uploaded(self, file: UploadedFile, prefix: str) -> StoredObject:
+        """Проверяет файл, который браузер загрузил по форме бэкенда, и отдаёт его размер и тип.
+
+        Raises:
+            S3ForeignKeyError: ключ выдан не для этой загрузки — не начинается с `prefix`.
+            S3ObjectNotFoundError: объекта нет — браузер его не загрузил.
+            S3FileTooLargeError: файл больше лимита из конфига.
+        """
+        if not file.key.startswith(prefix):
+            raise S3ForeignKeyError
+        stored = await self.stat(file.key)
+        self.check_size(stored.size)
+        return stored
 
     async def delete(self, key: str) -> None:
         """Удаляет объект; отсутствие объекта — не ошибка."""

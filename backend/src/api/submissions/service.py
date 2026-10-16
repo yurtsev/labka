@@ -17,7 +17,7 @@ from src.api.exc.submissions import (
     ForeignFileKeyError,
     StudentOnlyError,
 )
-from src.api.submissions.dto import Attempt, AttemptFile, AttemptReview, Attempts, UploadedFile
+from src.api.submissions.dto import Attempt, AttemptFile, AttemptReview, Attempts
 from src.core.access import exc as access_exc
 from src.core.access.service import AccessService
 from src.core.db.enums import DeadlineType, NotificationType, ReviewVerdict, UserRole
@@ -31,8 +31,8 @@ from src.core.errors import InternalError
 from src.core.grading.dto import Grade
 from src.core.notifications.dto import Payload
 from src.core.notifications.service import NotificationService
-from src.core.s3.dto import PresignedUpload
-from src.core.s3.exc import S3FileTooLargeError, S3ObjectNotFoundError
+from src.core.s3.dto import PresignedUpload, UploadedFile
+from src.core.s3.exc import S3FileTooLargeError, S3ForeignKeyError, S3ObjectNotFoundError
 from src.core.s3.service import S3Storage
 from src.core.security.dto import CurrentUser
 
@@ -225,13 +225,14 @@ class SubmissionService:
         return True
 
     async def _stored_file(self, prefix: str, file: UploadedFile) -> SubmissionFile:
-        if not file.key.startswith(prefix):
-            raise ForeignFileKeyError
         try:
-            stored = await self._storage.stat(file.key)
+            stored = await self._storage.uploaded(file, prefix)
+        except S3ForeignKeyError as exc:
+            raise ForeignFileKeyError from exc
         except S3ObjectNotFoundError as exc:
             raise FileNotUploadedError from exc
-        self._check_size(stored.size)
+        except S3FileTooLargeError as exc:
+            raise FileTooLargeError(exc.context) from exc
         return SubmissionFile(
             id=uuid7(),
             file_key=file.key,
