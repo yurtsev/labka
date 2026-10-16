@@ -3,7 +3,7 @@
         upgrade downgrade migrate \
         format lint lint-fix typecheck check \
         test test-integration test-all \
-        run create-admin create-admin-docker
+        run create-admin create-admin-docker seed seed-reset
 
 SRC := src tests
 TESTS := tests
@@ -38,6 +38,8 @@ help:
 	@echo "    run                       запустить приложение локально (без docker)"
 	@echo "    create-admin              создать админа (спросит почту, ФИО и пароль)"
 	@echo "    create-admin-docker       то же в запущенном make up контейнере backend"
+	@echo "    seed                      наполнить пустую базу тестовыми данными (пароль labka2026)"
+	@echo "    seed-reset                очистить базу и наполнить тестовыми данными заново"
 	@echo ""
 
 # === Docker ===
@@ -79,6 +81,13 @@ create-admin:
 
 create-admin-docker:
 	docker compose exec backend python -m src.admin.cli
+
+# Скрипт запускается с хоста, поэтому Postgres берётся с проброшенного порта, а не по имени сервиса.
+seed:
+	DATABASE__POSTGRES_HOST=localhost uv run python -m scripts.seed
+
+seed-reset:
+	DATABASE__POSTGRES_HOST=localhost uv run python -m scripts.seed --reset
 
 # === Tests ===
 
