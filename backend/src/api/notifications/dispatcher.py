@@ -4,7 +4,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from src.api.realtime.schemas import NotificationMessage, ResyncMessage
+from src.api.notifications.schemas import NotificationMessage, ResyncMessage
 from src.core.db.uow import UnitOfWork
 from src.core.notifications.service import NotificationService
 from src.core.realtime.hub import RealtimeHub

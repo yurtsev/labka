@@ -949,31 +949,31 @@ title = "Напоминание о дедлайне за сутки: тольк�
 layer = "integration"
 domain = "notifications"
 
-# --- integration / realtime ---
+# --- integration / notifications: WebSocket ---
 
 [[scenario]]
 id = "UC-C6-004"
 title = "Новое уведомление приходит по WebSocket адресату во все его вкладки со свежим счётчиком; чужие и посторонние ничего не получают; серия правок обновляет прежнее уведомление"
 layer = "integration"
-domain = "realtime"
+domain = "notifications"
 
 [[scenario]]
 id = "UC-C6-005"
 title = "WebSocket закрывается с 4401 без входа и с 4403 при запросе с чужого сайта; свой сайт и клиент без Origin принимаются"
 layer = "integration"
-domain = "realtime"
+domain = "notifications"
 
 [[scenario]]
 id = "UC-C6-006"
 title = "Отзыв сессии (смена пароля, выход) закрывает её WebSocket с 4401, не трогая сессию, где пароль менялся"
 layer = "integration"
-domain = "realtime"
+domain = "notifications"
 
 [[scenario]]
 id = "UC-C6-007"
 title = "Сервер шлёт ping; после потери соединения слушателя с БД клиенты получают resync, а новые уведомления снова доходят"
 layer = "integration"
-domain = "realtime"
+domain = "notifications"
 
 # --- integration / home ---
 

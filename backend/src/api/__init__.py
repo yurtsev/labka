@@ -13,7 +13,6 @@ from src.api.materials.router import router as materials_router
 from src.api.notifications.router import router as notifications_router
 from src.api.personal_tasks.router import router as personal_tasks_router
 from src.api.profile.router import router as profile_router
-from src.api.realtime.router import router as realtime_router
 from src.api.reviews.router import router as reviews_router
 from src.api.schedule.router import router as schedule_router
 from src.api.submissions.router import router as submissions_router
@@ -34,5 +33,4 @@ router.include_router(calendar_router)
 router.include_router(exams_router)
 router.include_router(final_grades_router)
 router.include_router(notifications_router)
-router.include_router(realtime_router)
 router.include_router(home_router)

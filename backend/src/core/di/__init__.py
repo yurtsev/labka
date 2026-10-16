@@ -13,7 +13,6 @@ from src.core.di.materials import MaterialsProvider
 from src.core.di.notifications import NotificationsProvider
 from src.core.di.personal_tasks import PersonalTasksProvider
 from src.core.di.profile import ProfileProvider
-from src.core.di.realtime import RealtimeProvider
 from src.core.di.reviews import ReviewsProvider
 from src.core.di.s3 import S3Provider
 from src.core.di.schedule import ScheduleProvider
@@ -33,7 +32,6 @@ __all__ = [
     "AuthProvider",
     "HomeProvider",
     "NotificationsProvider",
-    "RealtimeProvider",
     "SchedulerProvider",
     "ExamsProvider",
     "FinalGradesProvider",
